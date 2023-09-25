@@ -57,25 +57,25 @@ num_results = 4               #main to dekh bhi nhi rha tha 200 se isi lie start
 #               )
               
 #general weaviate info:
-# url = "http://localhost:8080/"
-url = "https://mn8thfktfgjqjhcveqbg.gcp-a.weaviate.cloud"
+url = "http://localhost:8081/"
+# url = "https://mn8thfktfgjqjhcveqbg.gcp-a.weaviate.cloud"
 apikey = "Pv2xn6thb7i0afeHyrlzLsSKQ3MugkSF9lq1" 
 
 # # client for memory cluster
-# client = weaviate.Client(
-#     url=url
-# )
 client = weaviate.Client(
-    url=url,  additional_headers= {"X-OpenAI-Api-Key": open_api_key}, auth_client_secret=weaviate.AuthApiKey(api_key=apikey), timeout_config=(120, 120), startup_period=30
+    url=url
 )
+# client = weaviate.Client(
+#     url=url,  additional_headers= {"X-OpenAI-Api-Key": open_api_key}, auth_client_secret=weaviate.AuthApiKey(api_key=apikey), timeout_config=(120, 120), startup_period=30
+# )
 
 #second client for saving the business bot info
-# client2 = weaviate.Client(
-#     url="http://localhost:8082/",
-# )
 client2 = weaviate.Client(
-    url="https://gbggpbtrrqfx2inkh1nyg.gcp-f.weaviate.cloud", additional_headers= {"X-OpenAI-Api-Key": open_api_key}, auth_client_secret=weaviate.AuthApiKey(api_key="DInIwluNBhMBxcBvLUwLBNie5S9jpBUdzVts"), timeout_config=(120, 120), startup_period=30
-    )
+    url="http://localhost:8082/",
+)
+# client2 = weaviate.Client(
+#     url="https://gbggpbtrrqfx2inkh1nyg.gcp-f.weaviate.cloud", additional_headers= {"X-OpenAI-Api-Key": open_api_key}, auth_client_secret=weaviate.AuthApiKey(api_key="DInIwluNBhMBxcBvLUwLBNie5S9jpBUdzVts"), timeout_config=(120, 120), startup_period=30
+#     )
 llm = ChatOpenAI(temperature=0.7, model_name="gpt-3.5-turbo")
 
 # auth verification decorator
@@ -1202,7 +1202,7 @@ ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "jfif", "gif"}
 
 mysql = MySQL()
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = '1234'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'fyoumyboi'
 app.config['MYSQL_DATABASE_DB'] = 'humanize'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -1894,6 +1894,9 @@ def register_old():
         return jsonify({"success": True, "message": msg, "token": token, "data": {"username": username, "name": name, "phone": phone, "email_id": email_id, "desc": agent_description}})  
     else:
         return jsonify({"success": False, "message": error})
+
+
+
 
 
 
