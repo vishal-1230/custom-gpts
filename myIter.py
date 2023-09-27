@@ -2750,7 +2750,7 @@ def login():
                     "success": True,
                     "message": "Logged in successfully",
                     "token": token,
-                    "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18]},
+                    "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "linkedin": user[19], "twitter": user[20], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22]},
                     "bots": botsnew
                     }), 200
             else:
@@ -2800,6 +2800,22 @@ def google_login():
         # return data except password
         token = jwt.encode({'username': data["email"]}, "h1u2m3a4n5i6z7e8")
         return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18]}}), 200
+
+@app.route('/set-first-time-off', methods=['GET'])
+@cross_origin()
+@token_required
+def set_first_time_off(username):
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        query = "UPDATE users SET firsttime=%s WHERE username=%s OR email_id=%s"
+        cur.execute(query, (False, username, username))
+        conn.commit()
+        cur.close()
+        return jsonify({"success": True, "message": "First time set to false"})
+    except Exception as e:
+        print("ERROR", e)
+        return jsonify({"success": False, "message": "Error in setting first time to false"})
 
 # testing auth token and decorator
 @app.route('/protected', methods=['GET'])
@@ -2864,10 +2880,13 @@ def general_user_info(username):
                     "discord": user[12],
                     "telegram": user[13],
                     "website": user[14],
+                    "linkedin": user[19],
+                    "twitter": user[20],
                     "favBots": user[15],
                     "pdfs": user[16],
                     "bots": user[17],
-                    "setup": user[18]
+                    "setup": user[18],
+                    "firsttime": user[22]
                     }, "bots": bots}), 200
     except Exception as e:
         print("ERROR", e)        
