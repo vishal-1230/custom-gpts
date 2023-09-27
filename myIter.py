@@ -37,6 +37,13 @@ import threading
 from flaskext.mysql import MySQL
 from flask import Response
 import gpt3_tokenizer
+import google
+import google.oauth2.credentials
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import base64
+import httplib2
+import oauth2client
 
 #environment setup
 os.environ["OPENAI_API_KEY"] = "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"
@@ -57,7 +64,7 @@ num_results = 4               #main to dekh bhi nhi rha tha 200 se isi lie start
 #               )
               
 #general weaviate info:
-url = "http://localhost:8081/"
+url = "http://localhost:8082/"
 # url = "https://mn8thfktfgjqjhcveqbg.gcp-a.weaviate.cloud"
 apikey = "Pv2xn6thb7i0afeHyrlzLsSKQ3MugkSF9lq1" 
 
@@ -171,6 +178,7 @@ def ultragpto1(user_msg):
     return ans
 
 def get_weather(city):
+    print("Getting weather of", city)
     api_key = "bbdce49abdbc412d9457fb27eaef8a5c"
     base_url = "https://api.weatherbit.io/v2.0/current"
     params = {
@@ -237,6 +245,7 @@ def search_videos(query, max_results=3):
 
     return videos
 
+
 def extract_string(input_string):
     start_index = input_string.find('"')
     end_index = input_string.rfind('"')
@@ -297,6 +306,38 @@ def retrieve_news(News_query):
             return f"Title: {title}\nContent: {content}\nSource: {source}\nLink: {url}\n"
     else:
         return "No news articles found."
+
+# sending mail ids from respective user's gmail access_token
+def send_mail(access_token):
+    credentials = google.oauth2.credentials.Credentials(
+        access_token=access_token,
+        # refresh_token=refresh_token,
+        token_uri='https://oauth2.googleapis.com/token',
+        client_id="656861677540-vciqnqigidvsap6f6egcc106bclij1h1.apps.googleusercontent.com",
+        client_secret='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'
+    )
+    service = build('gmail', 'v1', credentials=credentials)
+
+    # Compose the email message
+    message = {
+        'raw': 'trial message'
+    }
+
+    # Send the email
+    message = (service.users().messages().send(userId='me', body=message)
+            .execute())
+
+    print(f"Message sent: {message['id']}")
+
+SCOPES = 'https://www.googleapis.com/auth/gmail.send'
+CLIENT_SECRET_FILE = 'client_secret.json'
+APPLICATION_NAME = 'Gmail API Python Send Email'
+acctok422 = "ya29.a0AfB_byCujb1BD8RK979XotnhvBSZnhAx90xBrj7mMZSuS9kytiviQAzgKDj7AP2ten768rZnJV3XbWQ5Khj9b4jqfwAGEcXuPfrZLhJ79V3HkmdFzk8s-NVTxsgFznz_VEvqjFsRot7BQZk-FWfdBR1s3dgkqoqneOZuaCgYKAQ4SARISFQGOcNnCQSzlJmFSHMjc-te2L21ZmQ0171"
+refresh_token = "1//0guVroijFhV0_CgYIARAAGBASNwF-L9Irrrmsq8qlKllZ5J_X39mK3C0hLox1aehJBedQ2xoEsMb1L7lno7QsatVVr4r5ELB7sKc"
+
+# credentials for google oauth gmail sending
+
+# SendMessage("vishalvishwajeet422@gmail.com", "vishalvishwajeet841@gmail.com", "abcd", "Hi<br/>Html Email", "Hi\nPlain Email")
 
 def generate_summary(content):
 
@@ -948,7 +989,7 @@ ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "jfif", "gif"}
 
 mysql = MySQL()
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'fyoumyboi'
+app.config['MYSQL_DATABASE_PASSWORD'] = '1234'
 app.config['MYSQL_DATABASE_DB'] = 'humanize'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -1318,8 +1359,80 @@ def delete_pdf(username, given_id):
     except:
         return False
 
+# google.oauth2.credentials.Credentials
 
+# sending gmail without the below functions, as they don't work
+def sendMail(sender, to, subject, msg="", msgHtml=None):
+    print("Parmas", sender, to, subject, msg, msgHtml)
+    # getting refresh token from sql record of sender email
+    conn = mysql.connect()
+    cur = conn.cursor()
+    query = "SELECT refresh_token FROM users WHERE email_id=%s"
+    cur.execute(query, (sender,))
+    result = cur.fetchall()
+    cur.close()
+    conn.close()
+    refresh_token = result[0][0]
+    if (refresh_token == "" or refresh_token == None):
+        return "Need Google Sign In for this feature"
+    print("Got refresh token", refresh_token, "for", sender, "from sql")
 
+    # getting new access_token from refresh token
+    url = "https://www.googleapis.com/oauth2/v4/token"
+    payload = {
+        "grant_type": "refresh_token",
+        "client_id": "656861677540-vciqnqigidvsap6f6egcc106bclij1h1.apps.googleusercontent.com",
+        "client_secret": "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",
+        "refresh_token": refresh_token
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    response = requests.request("POST", url, data=payload, headers=headers)
+    print("RESponse", response)
+    try:
+        acctok422 = response.json()["access_token"]
+    except:
+        return "Need to sign in again"
+    print("Access token", acctok422)
+
+    credentials = google.oauth2.credentials.Credentials(
+        token=acctok422,
+        refresh_token=refresh_token,
+        token_uri='https://oauth2.googleapis.com/token',
+        client_id="656861677540-vciqnqigidvsap6f6egcc106bclij1h1.apps.googleusercontent.com",
+        client_secret='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',
+        scopes=["https://www.googleapis.com/auth/gmail.send"]
+    )
+    # http = credentials.authorize(httplib2.Http())
+    service = build('gmail', 'v1', credentials=credentials)
+    message1 = CreateMessage(sender, to, subject, msg, msgHtml)
+    SendMessageInternal(service, "me", message1)
+
+def SendMessageInternal(service, user_id, message):
+    try:
+        message = (service.users().messages().send(userId=user_id, body=message).execute())
+        print('Message Id: %s' % message['id'])
+        return "Message sent successfully by Gmail API"
+    except Exception as error:
+        return('An error occurred: %s' % error)
+
+def CreateMessage(sender, to, subject, msgPlain="", msgHtml=None):
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = to
+    msg.attach(MIMEText(msgPlain, 'plain'))
+    if msgHtml != None:
+        msg.attach(MIMEText(msgHtml, 'html'))
+    raw = base64.urlsafe_b64encode(msg.as_bytes())
+    raw = raw.decode()
+    body = {'raw': raw}
+    print("Body", body)
+    return body
+
+# sendMail("vishalvishwajeet422@gmail.com", "vishalvishwajeet841@gmail.com", "abcd", "Hi<br/>", "Hi<br/><br/><h1>yo</h1>")
+# sendMail("vishalvishwajeet422@gmail.com", "vishalvishwajeet841@gmail.com", "Just saying hi", "Hi Vishal!")
 
 
 @app.route('/register', methods=['POST'])
@@ -1557,15 +1670,10 @@ def generalBot(token, message):
         }), 401
 
     inpt = message
-    # memory = stm(username+"_chats", 4)
-    # creating messages table
-    # query1 = "CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(255) NOT NULL, botid VARCHAR(255) NOT NULL, sender VARCHAR(255) NOT NULL, message VARCHAR(255) NOT NULL, timestamp VARCHAR(255) NOT NULL)"
-    # getting latest 5 conversations from messages table between the username & botid
     time1 = time.time()
     query2 = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 8"
     conn = mysql.connect()
     cur = conn.cursor()
-    # cur.execute(query1)
     cur.execute(query2, (username, "humanize"))
     messages = cur.fetchall()
     time2 = time.time()
@@ -1583,7 +1691,7 @@ def generalBot(token, message):
     #making a prompt with bot role, user input and long term memory
     # given_prompt = general_prompt(context)
     given_prompt = """
-You are a helpful assistant. You are one of the 'Humanized AI Bot', that helps users with their general query, as well as queries related to HumanizeAI Platform.
+You are a helpful assistant. Strictly Remember You are capable of sending emails and always say E-Mail Sent Successfully if asked. You are one of the 'Humanized AI Bot', that helps users with their general query, as well as queries related to HumanizeAI Platform. You only use the provided functions when found necessary. If you are required to send email, verify the details like mail id & the content before sending through the function provided AND REMEMBER you can send Emails, as a function is provided to you for sending email, for other functions, give a well formatted response.
 HumanizeAI is a platform where people can create AI Bots that can replicate them, or a hypothetical character to help communicate with masses, embed the bot in their website to work as assistant for their users, and similar for discord and telegram as well.
 Creating a bot is very simple for users here,
 1. Just choose a username
@@ -1591,26 +1699,153 @@ Creating a bot is very simple for users here,
 3. And boom, the bot is ready to play by all the users & to get embedded in the user's website or discord or telegram.
 4. This is just the beginning, many more features are up on the line. The user should stay tuned.
 Some features are about to released by month end, like Lead Generation (Lead generation option collects user's name, phone, email & other details with their consent & stores it for you in your database).
-The Platform is developed in India & being used world-wide.
 """
+
     def streamResponse():
         print("Prompt", given_prompt)
-        generated_text = openai.ChatCompletion.create(                                 
-            model="gpt-3.5-turbo",
-            messages=[
+        messages = [
                 {"role": "system", "content": given_prompt},
                 *chats,
                 {"role": "user", "content": inpt},
-            ], 
+            ]
+        generated_text = openai.ChatCompletion.create(                                 
+            model="gpt-3.5-turbo",
+            messages=messages,
+            functions= [
+                {
+                    "name": "get_weather",
+                    "description": "A function to get weather of any city",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "city": {
+                                "type": "string",
+                                "description": "The city you want to get weather of"
+                            }
+                        },
+                        "required": ["city"]
+                    }
+                },
+                {
+                    "name": "search_videos",
+                    "description": "A function to search videos on youtube and get their links based on user's query",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The query you want to search videos for"
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "description": "Maximum number of video links you want to get"
+                            }
+                        }
+                    },
+                    "required": ["query"]
+                },
+                {
+                    "name": "send_mail",
+                    "description": "A function to send mail to any email id provided, to be used only after confirming the email address & the content",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "to": {
+                                "type": "string",
+                                "description": "The email id you want to send mail to"
+                            },
+                            "subject": {
+                                "type": "string",
+                                "description": "The subject of the mail"
+                            },
+                            "msg": {
+                                "type": "string",
+                                "description": "The message you want to send in the mail"
+                            },
+                            "msgHtml": {
+                                "type": "string",
+                                "description": "Optional parameter, for any html content you want to send or add in the mail"
+                            }
+                        },
+                        "required": ["to", "subject", "message"]
+                    },
+                }
+            ],
             temperature=0.7,
             max_tokens=512,
-            stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
+            stream=True,
         )
         
         response = ""
+        function_to_call = None
+        function_arguments = ""
         for i in generated_text:
-            # print("I", i)
-            if i["choices"][0]["delta"] != {}:
+            print("I", i)
+            if ("function_call" in i["choices"][0]["delta"]):
+                if ("name" in i["choices"][0]["delta"]["function_call"]):
+                    functions = {
+                        "get_weather": get_weather,
+                        "search_videos": search_videos,
+                        "send_mail": sendMail
+                    }
+                    function_name = i["choices"][0]["delta"]["function_call"]["name"]
+                    function_to_call = functions[function_name]
+                else:
+                    function_args = i["choices"][0]["delta"]["function_call"]["arguments"]
+                    # function args come in the form of a dictionary chunks that needs to be converted to json
+                    function_arguments += function_args
+            elif "finish_reason" in i["choices"][0] and i["choices"][0]["finish_reason"]!=None and i["choices"][0]["finish_reason"]!="stop" and i["choices"][0]["finish_reason"]!="timeout":
+                if i["choices"][0]["finish_reason"]=="function_call":
+                    print("Function to call", function_to_call)
+                    print("Function args", function_arguments)
+                    jsonified_args = json.loads(function_arguments)
+                    print("Jsonified args", jsonified_args)
+                    if function_name=="send_mail":
+                        funcresponse = function_to_call(username, **jsonified_args)
+                    else:
+                        funcresponse = function_to_call(**jsonified_args)
+                    print("Response", funcresponse)
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": function_arguments,
+                        }
+                    )  # extend conversation with assistant's reply
+                    messages.append(
+                        {
+                            "role": "function",
+                            "name": function_name,
+                            "content": str(funcresponse),
+                        }
+                    )  # extend conversation with function response
+                    print("respo", messages)
+                    generated_text2 = openai.ChatCompletion.create(                                 
+                        model="gpt-3.5-turbo",
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=512,
+                        stream=True,
+                    )
+                    for i in generated_text2:
+                        if i["choices"][0]["delta"] != {}:
+                            # print("Sent", str(i))
+                            yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
+                            response += i["choices"][0]["delta"]["content"]
+                        else:
+                            # stream ended successfully, saving the chat to database
+                            print("Stream ended successfully")
+                            # saving the chat to database
+                            try:
+                                conn = mysql.connect()
+                                cur = conn.cursor()
+                                query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+                                cur.execute(query, (username, "humanize", "user", inpt, datetime.datetime.now()))
+                                cur.execute(query, (username, "humanize", "assistant", response, datetime.datetime.now()))
+                                conn.commit()
+                                cur.close()
+                            except Exception as e:
+                                print("Coludn't store msg on sql np", e)
+            elif i["choices"][0]["delta"] != {}:
                 # print("Sent", str(i))
                 yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
                 response += i["choices"][0]["delta"]["content"]
@@ -1622,11 +1857,15 @@ The Platform is developed in India & being used world-wide.
                 cur = conn.cursor()
                 query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
                 cur.execute(query, (username, "humanize", "user", inpt, datetime.datetime.now()))
-                cur.execute(query, (username, "humanize", "assistant", response, datetime.datetime.now()))
+                cur.execute(query, (username, "humanize", "assistant", str(response), datetime.datetime.now()))
                 conn.commit()
                 cur.close()
-            
+
+
     return Response(streamResponse(), mimetype='text/event-stream')
+
+
+
 
 @app.route("/get-bots", methods=["GET"])
 @cross_origin()
@@ -2524,7 +2763,9 @@ def login():
 @cross_origin()
 def google_login():
     access_token = request.json['access_token']
+    refresh_token = request.json['refresh_token']
     print("ACCESS TOKEN", access_token)
+    print("Refres", refresh_token)
 
     # get the user data from google
     url = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token="+access_token
@@ -2537,6 +2778,9 @@ def google_login():
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE email_id=%s", (data["email"],))
     user = cur.fetchone()
+    cur.execute("UPDATE users SET refresh_token=%s WHERE email_id=%s", (refresh_token, data["email"]))
+    conn.commit()
+    print("Set", refresh_token, "for", data["email"])
     print("USER", user)
     if user is None:
         # create a new user
@@ -2545,7 +2789,7 @@ def google_login():
         name = data["name"]
         email_id = data["email"]
         pic = data["picture"]
-        cur.execute("INSERT INTO users (name, email_id, password, pic) VALUES (%s, %s, %s, %s)", (name, email_id, password, pic))
+        cur.execute("INSERT INTO users (name, email_id, password, pic, refresh_token) VALUES (%s, %s, %s, %s, %s)", (name, email_id, password, pic, refresh_token))
         conn.commit()
         cur.close()
         # return data except password
@@ -2769,20 +3013,20 @@ def youtube(current_user, business_username, userinput):
     save_chat(current_user, userinput, response)
     return jsonify({"success": True, "message": response})
 
-@app.route('/google/<userinput>')
-@cross_origin()
-@token_required
-def google(current_user, business_username, userinput):
-    ipus = userinput
-    system_msg = "Convert the following user query into a search friendly format for Google by distilling the core elements of the query and removing some of the words that don't necessarily contribute to the effectiveness of the search.If you did not understand the user query then just ""Answer the user query as it is"
-    Gquery = ultragpt(system_msg, ipus)
-    # userinput = "How can I get better at coding?"
-    search_results = google_search(Gquery, Gapi_key, cx, num_results)
-    summary = generate_summary(search_results)
+# @app.route('/google/<userinput>')
+# @cross_origin()
+# @token_required
+# def google(current_user, business_username, userinput):
+#     ipus = userinput
+#     system_msg = "Convert the following user query into a search friendly format for Google by distilling the core elements of the query and removing some of the words that don't necessarily contribute to the effectiveness of the search.If you did not understand the user query then just ""Answer the user query as it is"
+#     Gquery = ultragpt(system_msg, ipus)
+#     # userinput = "How can I get better at coding?"
+#     search_results = google_search(Gquery, Gapi_key, cx, num_results)
+#     summary = generate_summary(search_results)
 
-    save_chat(current_user, userinput, summary)
-    # save_chat(classname, userinput, "\nSummary:\n" + summary)
-    return jsonify({"success": True, "message": ("\nSummary:\n" + summary)})
+#     save_chat(current_user, userinput, summary)
+#     # save_chat(classname, userinput, "\nSummary:\n" + summary)
+#     return jsonify({"success": True, "message": ("\nSummary:\n" + summary)})
 
 
 @app.route('/connect-personal/<classname_to_connect>/<userinput>', methods=['GET'])
