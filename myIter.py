@@ -2763,7 +2763,9 @@ def login():
 @cross_origin()
 def google_login():
     access_token = request.json['access_token']
-    refresh_token = request.json['refresh_token']
+    refresh_token = None
+    if "refresh_token" in request.json:
+        refresh_token = request.json['refresh_token']
     print("ACCESS TOKEN", access_token)
     print("Refres", refresh_token)
 
@@ -2778,7 +2780,8 @@ def google_login():
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE email_id=%s", (data["email"],))
     user = cur.fetchone()
-    cur.execute("UPDATE users SET refresh_token=%s WHERE email_id=%s", (refresh_token, data["email"]))
+    if refresh_token != None:
+        cur.execute("UPDATE users SET refresh_token=%s WHERE email_id=%s", (refresh_token, data["email"]))
     conn.commit()
     print("Set", refresh_token, "for", data["email"])
     print("USER", user)
