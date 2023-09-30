@@ -1691,7 +1691,8 @@ def generalBot(token, message):
     #making a prompt with bot role, user input and long term memory
     # given_prompt = general_prompt(context)
     given_prompt = """
-You are a helpful assistant. Strictly Remember You are capable of sending emails and always say E-Mail Sent Successfully if asked. You are one of the 'Humanized AI Bot', that helps users with their general query, as well as queries related to HumanizeAI Platform. You only use the provided functions when found necessary. If you are required to send email, verify the details like mail id & the content before sending through the function provided AND REMEMBER you can send Emails, as a function is provided to you for sending email, for other functions, give a well formatted response.
+You are a helpful assistant. Strictly Remember You are capable of sending emails but the Email feature is under Google Verification so user need to wait for few days. You are one of the 'Humanized AI Bot', that helps users with their general query, as well as queries related to HumanizeAI Platform. You only use the provided functions when found necessary. If you are required to send email, verify the details like mail id & the content before sending through the function provided AND REMEMBER you can send Emails, as a function is provided to you for sending email, for other functions, give a well formatted response.
+Try not to stretch messages too long.
 HumanizeAI is a platform where people can create AI Bots that can replicate them, or a hypothetical character to help communicate with masses, embed the bot in their website to work as assistant for their users, and similar for discord and telegram as well.
 Creating a bot is very simple for users here,
 1. Just choose a username
@@ -1744,32 +1745,32 @@ Some features are about to released by month end, like Lead Generation (Lead gen
                     },
                     "required": ["query"]
                 },
-                {
-                    "name": "send_mail",
-                    "description": "A function to send mail to any email id provided, to be used only after confirming the email address & the content",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "to": {
-                                "type": "string",
-                                "description": "The email id you want to send mail to"
-                            },
-                            "subject": {
-                                "type": "string",
-                                "description": "The subject of the mail"
-                            },
-                            "msg": {
-                                "type": "string",
-                                "description": "The message you want to send in the mail"
-                            },
-                            "msgHtml": {
-                                "type": "string",
-                                "description": "Optional parameter, for any html content you want to send or add in the mail"
-                            }
-                        },
-                        "required": ["to", "subject", "message"]
-                    },
-                }
+                # {
+                #     "name": "send_mail",
+                #     "description": "A function to send mail to any email id provided, to be used only after confirming the email address & the content",
+                #     "parameters": {
+                #         "type": "object",
+                #         "properties": {
+                #             "to": {
+                #                 "type": "string",
+                #                 "description": "The email id you want to send mail to"
+                #             },
+                #             "subject": {
+                #                 "type": "string",
+                #                 "description": "The subject of the mail"
+                #             },
+                #             "msg": {
+                #                 "type": "string",
+                #                 "description": "The message you want to send in the mail"
+                #             },
+                #             "msgHtml": {
+                #                 "type": "string",
+                #                 "description": "Optional parameter, for any html content you want to send or add in the mail"
+                #             }
+                #         },
+                #         "required": ["to", "subject", "message"]
+                #     },
+                # }
             ],
             temperature=0.7,
             max_tokens=512,
@@ -1852,6 +1853,7 @@ Some features are about to released by month end, like Lead Generation (Lead gen
             else:
                 # stream ended successfully, saving the chat to database
                 print("Stream ended successfully")
+                print("Resp total", response)
                 # saving the chat to database
                 conn = mysql.connect()
                 cur = conn.cursor()
@@ -1880,8 +1882,8 @@ def getBots(username):
         favBots = json.loads(cur.fetchone()[0])
         favBots.append("")
         queryFavBots = "SELECT botid, username, description, interactions, likes, name, pic FROM bots WHERE botid IN %s"
-        queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY interactions DESC LIMIT 9"
-        queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY id DESC LIMIT 6"
+        queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 9"
+        queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 6"
         cur.execute(queryGetTalkedBots, (username,))
         talkedBots = cur.fetchall()
         print("Talked bots", talkedBots)
@@ -2762,6 +2764,7 @@ def login():
 @app.route("/google-login", methods=["POST"])
 @cross_origin()
 def google_login():
+    print("BODY", request.json)
     access_token = request.json['access_token']
     refresh_token = None
     if "refresh_token" in request.json:
