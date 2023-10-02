@@ -1220,6 +1220,10 @@ def connect_api(classname, className_b, inpt, allowImages, b_botrole, b_steps, c
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
     result = cur.fetchall()
+    # queryToCheckApiCalls = "SELECT * FROM api_calls WHERE botid=%s"
+    # cur.execute(queryToCheckApiCalls, (className_b,))
+    # api_calls = cur.fetchall()
+    # conn.commit()
     memory = []
     for i in result:
         memory.append({"role": i[3], "content": i[4]})
@@ -1578,8 +1582,8 @@ def storeBotData(username):
             query2 = "UPDATE users SET setup=%s WHERE email_id=%s"
             cur.execute(query2, (1, username))
             # as this is primary bot, update data in users table
-            queryUpdateUser = "UPDATE users SET name=%s, pic=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s WHERE email_id=%s OR username=%s"
-            cur.execute(queryUpdateUser, (name, pic, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, username))
+            queryUpdateUser = "UPDATE users SET purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s WHERE email_id=%s OR username=%s"
+            cur.execute(queryUpdateUser, (purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, username))
         cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
         conn.commit()
         cur.close()
@@ -1639,8 +1643,8 @@ def updateBotData(username):
         data = cur.fetchone()
         primary = data[0]
         if primary:
-            query = "UPDATE users SET name=%s, pic=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s WHERE email_id=%s OR username=%s"
-            cur.execute(query, (name, pic, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, data[1], data[1]))
+            query = "UPDATE users SET purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s WHERE email_id=%s OR username=%s"
+            cur.execute(query, (purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, data[1], data[1]))
         conn.commit()
         cur.close()
         return jsonify({"success": True, "message": "Bot data stored successfully."}), 200
