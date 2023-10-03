@@ -1643,7 +1643,9 @@ def generalBot(token, message):
     # arranging the chat data into a format of list of dictionaries having "role": "user" or "role": "assistant" and "content": "message"
     chats = []
     for message in messages:
-        chats.append({"role": message[3], "content": message[4]})
+        words = message[4].split()
+        first_100_words = ' '.join(words[:100])
+        chats.append({"role": message[3], "content": first_100_words})
     chats.reverse()
     print("Previous chats", chats)
     
@@ -2386,7 +2388,9 @@ def trainBot_api(token, message):
     # formatting chats to list of dicts having user or assistant
     chatsnew = []
     for chat in chats:
-        chatsnew.append({"role": chat[3], "content": chat[4]})
+        words = chat[4].split()
+        first_100 = " ".join(words[:100])
+        chatsnew.append({"role": chat[3], "content": first_100})
     chatsnew.reverse()
     print("CHATSNEW", chatsnew)
 
