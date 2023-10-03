@@ -1465,7 +1465,16 @@ def register():
         print("User data written to mysql")
 
         token = jwt.encode({'username': email_id}, "h1u2m3a4n5i6z7e8")
-        return jsonify({"success": True, "message": "Account created successfully", "token": token, "data": {"name": name, "email_id": email_id}}), 201
+        return jsonify({
+            "success": True,
+            "message": "Account created successfully",
+            "token": token,
+            "data": {
+                "name": name,
+                "email_id": email_id
+                },
+            "bots": []
+            }), 201
     except Exception as e:
         print("MYSQL ERR", e)
         return jsonify({"success": False, "message": "Error in writing user data to Database"}), 500
@@ -1675,7 +1684,7 @@ def generalBot(token, message):
 
     inpt = message
     time1 = time.time()
-    query2 = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 8"
+    query2 = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 5"
     conn = mysql.connect()
     cur = conn.cursor()
     cur.execute(query2, (username, "humanize"))
@@ -1867,10 +1876,25 @@ Some features are about to released by month end, like Lead Generation (Lead gen
                 conn.commit()
                 cur.close()
 
-
     return Response(streamResponse(), mimetype='text/event-stream')
 
-
+@app.route('/get-last-msg/<botid>', methods=["GET"])
+@cross_origin()
+@token_required
+def getLastMsg(username, botid):
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        query = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 1"
+        cur.execute(query, (username, botid))
+        message = (cur.fetchone())[4]
+        print("Last msg", message)
+        conn.commit()
+        cur.close()
+        return jsonify({"success": True, "message": "Last message fetched successfully.", "data": message}), 200
+    except Exception as e:
+        print("MYSQL ERR", e)
+        return jsonify({"success": False, "message": "Error in fetching last message from Database"}), 500
 
 
 @app.route("/get-bots", methods=["GET"])
