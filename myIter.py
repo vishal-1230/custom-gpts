@@ -1,3 +1,5 @@
+#2140 me hai ek to
+
 from functools import wraps
 import os
 import uuid
@@ -15,6 +17,12 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import SVC
 from collections import Counter
+from tempfile import TemporaryDirectory
+import pytesseract
+from pathlib import Path
+from PIL import Image
+from PyPDF2 import PdfReader
+from pdf2image import convert_from_path
 from flask import Flask, request, render_template, jsonify
 from flask_cors import CORS, cross_origin
 from werkzeug.utils import secure_filename
@@ -376,47 +384,6 @@ def google_search(Gquery, Gapi_key, cx, num_results):
 def replace_cid_415(text):
     return re.sub(r'\b\(cid:415\)\b', 'ti', text)
 
-def extract_text_from_pdf_100_2(pdf_path):
-    text = ""
-    try:
-        # Create a PDF resource manager object
-        resource_manager = PDFResourceManager()
-
-        # Create a string object to hold the extracted text
-        output_string = StringIO()
-
-        # Set up parameters for the PDF page interpreter
-        laparams = LAParams()
-
-        # Create a PDF page interpreter object
-        page_interpreter = PDFPageInterpreter(resource_manager,
-                                              TextConverter(resource_manager, output_string, laparams=laparams))
-
-        with open(pdf_path, 'rb') as file:
-            # Iterate over each page in the PDF file
-            for page in PDFPage.get_pages(file):
-                # Process the page
-                page_interpreter.process_page(page)
-
-            # Extract the text from the StringIO object
-            text = output_string.getvalue()
-
-        # Close the StringIO object
-        output_string.close()
-
-        # Replace (cid:415) with "ti" between words
-        text = replace_cid_415(text)
-
-    except Exception as e:
-        print("Error occurred during PDF text extraction:", str(e))
-
-    word_list = text.split()
-    word_chunks = [word_list[i:i+100] for i in range(0, len(word_list), 100)]
-
-    sentence_lists = [sent_tokenize(' '.join(chunk)) for chunk in word_chunks]
-
-    return sentence_lists
-
 def extract_text_from_pdf_100(pdf_path):
     resource_manager = PDFResourceManager()
     output_stream = io.StringIO()
@@ -440,50 +407,38 @@ def extract_text_from_pdf_100(pdf_path):
 
     return paragraphs
 
-def extract_text_from_pdf_500(pdf_path):
-    try:
-        # Create a PDF resource manager object
-        resource_manager = PDFResourceManager()
+def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=500):
+    PDF_file = Path(pdf_name)
+    image_file_list = []
+    text_file = out_directory / Path(output_file)
+    with open(PDF_file,'rb') as f:
+        pdf = PdfReader(f)
+        pages = len(pdf.pages)
+        for i in range(0,pages):
+            page1 = pdf.pages[i]
+            with open(text_file, 'a') as f:
+                f.write(page1.extract_text())
+    with TemporaryDirectory() as tempdir:        
+        pdf_pages = convert_from_path(PDF_file, dpi=dpi) 
+        for page_enumeration, page in enumerate(pdf_pages, start=1):
+            filename = f"{tempdir}\page_{page_enumeration:03}.jpg"
+            page.save(filename, "JPEG")
+            image_file_list.append(filename)
 
-        # Create a string object to hold the extracted text
-        output_string = StringIO()
-
-        # Set up parameters for the PDF page interpreter
-        laparams = LAParams()
-
-        # Create a PDF page interpreter object
-        page_interpreter = PDFPageInterpreter(resource_manager,
-                                              TextConverter(resource_manager, output_string, laparams=laparams))
-
-        with open(pdf_path, 'rb') as file:
-            # Iterate over each page in the PDF file
-            for page in PDFPage.get_pages(file):
-                # Process the page
-                page_interpreter.process_page(page)
-
-                # Extract the text from the StringIO object
-                text = output_string.getvalue()
-
-                # Split the text into words
-                words = text.split()
-
-                # Raise an exception if more than 200 words are present
-                if len(words) > 500:
-                    print("More than 500 words specified")
-                    return False
-
-                # Replace (cid:415) with "ti" between words
-                text = replace_cid_415(text)
-
-                # Close the StringIO object
-                output_string.close()
-
-                return text
-
-    except Exception as e:
-        print("Error occurred during PDF text extraction:", str(e))
-
-    return ""
+        with open(text_file, "a") as output_file:
+            for image_file in image_file_list:
+                text = str(((pytesseract.image_to_string(Image.open(image_file)))))
+                text = text.replace("-\n", "")
+                output_file.write(text)
+    
+        with open(text_file, "r") as f:
+            textFinal = f.read()
+        paragraphs = textFinal.split("\n\n")
+        paragraphs = [p.strip() for p in paragraphs if p.strip()] 
+        if os.path.exists(text_file):
+            os.remove(text_file)
+            
+    return paragraphs
 
 # Function to generate answers using OpenAI GPT-3.5 model
 def generate_answers(text, question):
@@ -2137,7 +2092,8 @@ def training_tab(token, botid, message):
             print("File allowed")
             filename = secure_filename(inpt_file.filename)
             inpt_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            inpt = extract_text_from_pdf_100("./assets/"+filename)
+            txt = filename.replace(".pdf", ".txt")
+            inpt = OCRFINAL("./assets/"+filename, txt)
             print("Read all text from pdf")
         else:
             error = "Please upload the botrole file in PDF format"
@@ -2178,7 +2134,8 @@ def train_with_pdf(username):
             print("File allowed")
             filename = secure_filename(inpt_file.filename)
             inpt_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            inpt = extract_text_from_pdf_100("./assets/"+filename)
+            txt = filename.replace(".pdf", ".txt")
+            inpt = OCRFINAL("./assets/"+filename, txt)
             print("Read all text from pdf")
             error = None
         else:
@@ -2449,7 +2406,8 @@ def trainBot_api(token, message):
             print("File allowed")
             filename = secure_filename(inpt_file.filename)
             inpt_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            inpt = extract_text_from_pdf_100("./assets/"+filename)
+            txt = filename.replace(".pdf", ".txt")
+            inpt = OCRFINAL("./assets/"+filename, txt)
             print("Read all text from pdf")
         else:
             error = "Please upload the botrole file in PDF format"
@@ -2489,7 +2447,8 @@ def train_with_pdf_api(username, botid):
             print("File allowed")
             filename = secure_filename(inpt_file.filename)
             inpt_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            inpt = extract_text_from_pdf_100("./assets/"+filename)
+            txt = filename.replace(".pdf", ".txt")
+            inpt = OCRFINAL("./assets/"+filename, txt)
             print("Read all text from pdf")
             error = None
         else:
