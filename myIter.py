@@ -1083,7 +1083,10 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
             
     return Response(streamResponse(), mimetype='text/event-stream')
 
-def connect(classname, className_b, inpt, allowImages, b_botrole, b_steps, comp_info=""):
+def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, b_steps, comp_info=""):
+
+    if subscription == None:
+        subscription = 0
 
     context = query(className_b, inpt)
     print("Found context", context, "for", inpt)
@@ -1114,7 +1117,7 @@ def connect(classname, className_b, inpt, allowImages, b_botrole, b_steps, comp_
     def streamResponse():
         print("Prompt", given_prompt)
         generated_text = openai.ChatCompletion.create(                                 
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
             messages=[
                 {"role": "system", "content": given_prompt},
                 *modified_ltm,
@@ -1163,7 +1166,10 @@ def connect(classname, className_b, inpt, allowImages, b_botrole, b_steps, comp_
             
     return Response(streamResponse(), mimetype='text/event-stream')
 
-def connect_api(classname, className_b, inpt, allowImages, b_botrole, b_steps, comp_info=""):
+def connect_api(classname, className_b, subscription, inpt, allowImages, b_botrole, b_steps, comp_info=""):
+
+    if subscription == None:
+        subscription = 0
 
     context = query(className_b, inpt)
     print("Found context", context, "for", inpt)
@@ -1196,7 +1202,7 @@ def connect_api(classname, className_b, inpt, allowImages, b_botrole, b_steps, c
     def streamResponse():
         print("Prompt", given_prompt)
         generated_text = openai.ChatCompletion.create(                                 
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
             messages=[
                 {"role": "system", "content": given_prompt},
                 *modified_ltm,
@@ -2215,7 +2221,7 @@ def connect_to_business_bot(token, botid, userinput):
 
     conn = mysql.connect()
     cur = conn.cursor()
-    query = "SELECT botrole, rules, company_info, allowImages FROM bots WHERE botid=%s"
+    query = "SELECT botrole, rules, company_info, allowImages, username FROM bots WHERE botid=%s"
     cur.execute(query, (botid,))
     result = cur.fetchone()
     print("RESULT", result)
@@ -2223,6 +2229,11 @@ def connect_to_business_bot(token, botid, userinput):
     steps = str(result[1])
     company_info = str(result[2])
     allowImages = str(result[3])
+    username2 = str(result[4])
+    subscriptionQuery = "SELECT subscription FROM users WHERE username=%s OR email_id=%s"
+    cur.execute(subscriptionQuery, (username2, username2))
+    subscription = cur.fetchone()[0] # starting from 0 = free
+    conn.commit()
 
     #applying the filter
     # loading the data
@@ -2231,7 +2242,7 @@ def connect_to_business_bot(token, botid, userinput):
     #     return jsonify({"success": True, "message": "I apologize but I do not know what you are asking."})
     # else:
         #the links variable is a list of links for images to be loaded
-    response = connect(username, botid, userinput, allowImages, botrole, steps, company_info)
+    response = connect(username, botid, subscription, userinput, allowImages, botrole, steps, company_info)
         #store the links along with msg
         # def add_links_to_history():
         #     for link in links:
@@ -2350,7 +2361,7 @@ def messageBot_api(token, message):
     
     conn = mysql.connect()
     cur = conn.cursor()
-    query = "SELECT botrole, rules, company_info, allowImages FROM bots WHERE botid=%s"
+    query = "SELECT botrole, rules, company_info, allowImages, username FROM bots WHERE botid=%s"
     cur.execute(query, (botid,))
     result = cur.fetchone()
     conn.commit()
@@ -2359,9 +2370,14 @@ def messageBot_api(token, message):
     steps = str(result[1])
     company_info = str(result[2])
     allowImages = str(result[3])
+    username2 = str(result[4])
+    subscriptionQuery = "SELECT subscription FROM users WHERE username=%s OR email_id=%s"
+    cur.execute(subscriptionQuery, (username2, username2))
+    subscription = cur.fetchone()[0] # starting from 0 = free
+    conn.commit()
 
         #the links variable is a list of links for images to be loaded
-    response = connect_api(username, botid, message, False, botrole, steps, company_info)
+    response = connect_api(username, botid, subscription, message, False, botrole, steps, company_info)
 
     return response
 
