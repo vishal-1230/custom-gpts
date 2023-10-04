@@ -78,7 +78,7 @@ apikey = "Pv2xn6thb7i0afeHyrlzLsSKQ3MugkSF9lq1"
 
 # # client for memory cluster
 client = weaviate.Client(
-    url=url
+    url=url, additional_headers= {"X-OpenAI-Api-Key": open_api_key}
 )
 # client = weaviate.Client(
 #     url=url,  additional_headers= {"X-OpenAI-Api-Key": open_api_key}, auth_client_secret=weaviate.AuthApiKey(api_key=apikey), timeout_config=(120, 120), startup_period=30
@@ -407,7 +407,7 @@ def extract_text_from_pdf_100(pdf_path):
 
     return paragraphs
 
-def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=500):
+def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=200):
     PDF_file = Path(pdf_name)
     image_file_list = []
     text_file = out_directory / Path(output_file)
