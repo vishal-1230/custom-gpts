@@ -411,13 +411,7 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
     PDF_file = Path(pdf_name)
     image_file_list = []
     text_file = out_directory / Path(output_file)
-    with open(PDF_file,'rb') as f:
-        pdf = PdfReader(f)
-        pages = len(pdf.pages)
-        for i in range(0,pages):
-            page1 = pdf.pages[i]
-            with open(text_file, 'a') as f:
-                f.write(page1.extract_text())
+  
     with TemporaryDirectory() as tempdir:        
         pdf_pages = convert_from_path(PDF_file, dpi=dpi) 
         for page_enumeration, page in enumerate(pdf_pages, start=1):
@@ -433,8 +427,12 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
     
         with open(text_file, "r") as f:
             textFinal = f.read()
-        paragraphs = textFinal.split("\n\n")
-        paragraphs = [p.strip() for p in paragraphs if p.strip()] 
+        
+        paragraphs = []
+        words = textFinal.split()
+        for i in range(0, len(words), 100):
+            paragraphs.append(' '.join(words[i:i+100]))
+        
         if os.path.exists(text_file):
             os.remove(text_file)
             
