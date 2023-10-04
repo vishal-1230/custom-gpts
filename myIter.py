@@ -52,6 +52,7 @@ from email.mime.text import MIMEText
 import base64
 import httplib2
 import oauth2client
+import urllib
 
 #environment setup
 os.environ["OPENAI_API_KEY"] = "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"
@@ -1023,9 +1024,11 @@ def parse_messages(input_string):
 def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does not alter the long term memory
 
     print("GOT", className_b)
+    print("Getting ltm for ", inpt)
 
     context = query(botid, inpt)
     ltm = query(botid+"_ltm", inpt)
+    print("Got ltm", ltm)
     # getting short term chats
 
     #making a prompt with bot role, user input and long term memory
@@ -1616,9 +1619,10 @@ def updateBotData(username):
         print("MYSQL ERR", e)
         return jsonify({"success": False, "message": "Error in writing bot data to Database"}), 500
 
-@app.route('/general-bot/<token>/<message>', methods=["GET"])
+@app.route('/general-bot/<token>/<path:message>', methods=["GET"])
 @cross_origin()
 def generalBot(token, message):
+    message = urllib.parse.unquote(message)
     # getting the username from the token
         # return 401 if token is not passed
     if not token:
@@ -2052,10 +2056,10 @@ def getChats(username, botid):
         return jsonify({"success": False, "message": "Error in fetching chats data from Database"}), 500
 
 #for the training tab
-@app.route('/training/<token>/<botid>/<message>', methods=['GET'])
+@app.route('/training/<token>/<botid>/<path:message>', methods=['GET'])
 @cross_origin()
 def training_tab(token, botid, message):
-
+    message = urllib.parse.unquote(message)
     # getting username
     if not token:
         return jsonify({'message': 'Token is missing !!', "success": False}), 401
@@ -2188,9 +2192,10 @@ def train_with_pdf(username):
 
 #-----checking left------
 #for connecting with other bots  
-@app.route('/connect-business/<token>/<botid>/<userinput>', methods=['GET'])
+@app.route('/connect-business/<token>/<botid>/<path:userinput>', methods=['GET'])
 @cross_origin()
 def connect_to_business_bot(token, botid, userinput):
+    userinput = urllib.parse.unquote(userinput)
 
     # getting user data
     if not token:
