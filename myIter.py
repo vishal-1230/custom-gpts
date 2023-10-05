@@ -1617,8 +1617,12 @@ def updateBotData(username):
         conn = mysql.connect()
         cur = conn.cursor()
         # bots (id INT AUTO_INCREMENT PRIMARY KEY, botid VARCHAR(255) UNIQUE NOT NULL, username VARCHAR(255) NOT NULL, description VARCHAR(255) DEFAULT NULL, interactions INT(255) DEFAULT 0, likes INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', botrole blob DEFAULT NULL, steps blob DEFAULT NULL, company_info blob DEFAULT NULL, public boolean DEFAULT TRUE)
-        query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
-        cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
+        if pic:
+            query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
+            cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
+        else:
+            query = "UPDATE bots SET name=%s, description=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
+            cur.execute(query, (name, description, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
         query2 = "SELECT personal, username FROM bots WHERE botid=%s"
         cur.execute(query2, (botid,))
         data = cur.fetchone()
