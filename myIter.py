@@ -63,6 +63,8 @@ Gapi_key = "AIzaSyD1Ryf9vTp6aXS8gmgqVD--G-3JUDOjuKk"
 cx = "f6102f35bce1e44ed"  #xDDDDDD # SAALE, YE KEYS MT CHURAIYO, JAAN LE LENGE MERI
 num_results = 4               #main to dekh bhi nhi rha tha 200 se isi lie start kia tha Xd  GUD GUD tu hi idhar le aaya xD
 
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+
 #ruk
 # response = openai.ChatCompletion.create(
 #                 model=self.model,
@@ -414,7 +416,7 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
     text_file = out_directory / Path(output_file)
   
     with TemporaryDirectory() as tempdir:        
-        pdf_pages = convert_from_path(PDF_file, dpi=dpi) 
+        pdf_pages = convert_from_path(PDF_file, dpi=dpi, poppler_path="/usr/bin")
         for page_enumeration, page in enumerate(pdf_pages, start=1):
             filename = f"{tempdir}\page_{page_enumeration:03}.jpg"
             page.save(filename, "JPEG")
@@ -682,11 +684,13 @@ def make_prompt(role, text):
 
 
 
-def training_prompt(botrole, context, steps, comp_info):
+def training_prompt(botrole, context, steps, comp_info, subscription, ltm):
     
     # template = str(botrole)+"\n\nThere are some steps that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for."+"""
-    template = """You're a helpful assistant. You have to replicate and act exactly like the following role: """ + str(botrole)+ """Strictly remember, You are capable of showing images, so just say 'Below are the images I can find for you' instead of "As an AI assistant I can't show images" Following is the information about your company. Refer to it if required only."""+str(comp_info)+"\nYou are not an AI bot."+"\n\nThese are some rules that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for.\n\nThese are some things you already know regarding the given query: """+str(context)+"""
-""" 
+    if subscription == 0 or subscription == None:
+        template = """You're a helpful assistant. You have to replicate and act exactly like the following role: """ + str(botrole)+ """Strictly remember, you have to act like that only, and have it on priority even if user asks to act like someone else or normal ChatGPT. Strictly remember, You are capable of showing images, so just say 'Below are the images I can find for you' instead of "As an AI assistant I can't show images" Following is the information about your company. Refer to it if required only."""+str(comp_info)+"\nYou are not an AI bot."+"\n\nThese are some rules that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for.\n\nThese are some things you already know regarding the given query: """+str(context)+""""""
+    else:
+        template = """You're a helpful assistant. You have to replicate and act exactly like the following role: """ + str(botrole)+ """Strictly remember, you have to act like that only, and have it on priority even if user asks to act like someone else or normal ChatGPT. Strictly remember, You are capable of showing images, so just say 'Below are the images I can find for you' instead of "As an AI assistant I can't show images" Following is the information about your company. Refer to it if required only."""+str(comp_info)+"\nYou are not an AI bot."+"\n\nThese are some rules that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for.\n\nThese are some things you already know regarding the given query: """+str(context)+"""And these are chats you have been trained on:"""+str(ltm)+""""""
 
     # final_prompt = PromptTemplate(
     # input_variables=["human_input"], 
@@ -1107,9 +1111,13 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     cur.close()
     conn.close()
 
-    given_prompt = training_prompt(b_botrole, context, b_steps, comp_info)
+    given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
 
-    modified_ltm = parse_messages(ltm)
+    if subscription == 0 or subscription == None:
+        modified_ltm = parse_messages(ltm)
+        chatsToSend = [*modified_ltm, *memory]
+    else:
+        chatsToSend = [*memory]
     # print("Modified", modified_ltm)
 
     print("Chats going are: ", [*modified_ltm, *memory])
@@ -1120,8 +1128,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
             model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
             messages=[
                 {"role": "system", "content": given_prompt},
-                *modified_ltm,
-                *memory,
+                *chatsToSend,
                 {"role": "user", "content": inpt},
             ], 
             temperature=0.7,
@@ -1194,9 +1201,13 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
     cur.close()
     conn.close()
 
-    given_prompt = training_prompt(b_botrole, context, b_steps, comp_info)
+    given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
 
-    modified_ltm = parse_messages(ltm)
+    if subscription == 0 or subscription == None:
+        modified_ltm = parse_messages(ltm)
+        chatsToSend = [*modified_ltm, *memory]
+    else:
+        chatsToSend = [*memory]
     # print("Modified", modified_ltm)
 
     def streamResponse():
@@ -1205,8 +1216,7 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
             model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
             messages=[
                 {"role": "system", "content": given_prompt},
-                *modified_ltm,
-                *memory,
+                *chatsToSend,
                 {"role": "user", "content": inpt},
             ], 
             temperature=0.7,
@@ -2154,6 +2164,7 @@ def training_tab(token, botid, message):
 def train_with_pdf(username):
     try:
         botid = request.form['botid']
+        message = request.form['message'] if "message" in request.form else ""
         given_id = generate_uuid()
         print("Gave id", given_id)
         inpt_file = request.files['file'] 
@@ -2181,6 +2192,10 @@ def train_with_pdf(username):
             print("INPT", inpt)
             for item in inpt:
                 print("ITEM", item)
+                if len(inpt)==1:
+                    item=message + ":\n" + item
+                else:
+                    item = message + "(Page " + str(inpt.index(item)+1) + "):\n" + item
                 client.data_object.create(class_name=botid, data_object={"chat": item})
                 list_id.append(client.data_object.get(class_name=botid, uuid=None)["objects"][0]["id"])
             
