@@ -836,8 +836,8 @@ def query(className, content):
 
     for i in range(5):
         try:
-            print("Result 1", str(result['data']['Get'][str(className).capitalize()]))
-            context = context+" "+str(result['data']["Get"][str(className).capitalize()][i]["chat"])+", "
+            print("Result 1", str(result['data']['Get'][str(className)[0].upper() + str(className)[1:]]))
+            context = context+" "+str(result['data']["Get"][str(className)[0].upper() + str(className)[1:]][i]["chat"])+", "
         except:
             pass
 
@@ -860,7 +860,7 @@ def query_image(className, content):
 
     for i in range(5): 
         try:
-            q_link = str(result['data']["Get"][str(className).capitalize()][i]["link"])
+            q_link = str(result['data']["Get"][str(className)[0].upper() + str(className)[1:]][i]["link"])
             if q_link !="":
                 links.append(q_link)
         except:
