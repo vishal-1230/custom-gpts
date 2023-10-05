@@ -1120,7 +1120,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
         chatsToSend = [*memory]
     # print("Modified", modified_ltm)
 
-    print("Chats going are: ", [*modified_ltm, *memory])
+    print("Chats going are: ", chatsToSend)
 
     def streamResponse():
         print("Prompt", given_prompt)
