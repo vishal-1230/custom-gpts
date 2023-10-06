@@ -417,6 +417,7 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
   
     with TemporaryDirectory() as tempdir:        
         pdf_pages = convert_from_path(PDF_file, dpi=dpi, poppler_path="/usr/bin")
+        print("pdf_pages", pdf_pages)
         for page_enumeration, page in enumerate(pdf_pages, start=1):
             filename = f"{tempdir}\page_{page_enumeration:03}.jpg"
             page.save(filename, "JPEG")
@@ -433,8 +434,8 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
         
         paragraphs = []
         words = textFinal.split()
-        for i in range(0, len(words), 100):
-            paragraphs.append(' '.join(words[i:i+100]))
+        for i in range(0, len(words), 250):
+            paragraphs.append(' '.join(words[i:i+250]))
         
         if os.path.exists(text_file):
             os.remove(text_file)
@@ -1514,6 +1515,46 @@ def createBot(username):
         print("MYSQL ERR", e)
         return jsonify({"success": False, "message": "Error in writing bot data to Database"}), 500
 
+@app.route("/upload-pdf", methods=["POST"])
+@cross_origin()
+# @token_required
+def uploadPdf():
+    # return read pdf
+    try:
+        # check if allowed file
+        if 'pdf' not in request.files:
+            return jsonify({"success": False, "message": "No file part"}), 400
+        pdf = request.files['pdf']
+        if pdf.filename == '':
+            return jsonify({"success": False, "message": "No selected file"}), 400
+        if pdf and allowed_file(pdf.filename):
+            # file size check, shouldb't be more than 10mb
+            # save file
+            filename = secure_filename(pdf.filename)
+            # save in uploads folder
+            print("Saving", filename)
+            # pdf.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            pdf.save(os.path.join(app.root_path, "assets", filename))
+            txt = filename.replace(".pdf", ".txt")
+            inpt = OCRFINAL("./assets/"+filename, txt) # reurns a list of strings where each string has 250 words
+            # print("Inpt", inpt)
+            string = ""
+            for i in inpt:
+                string += i
+            print("String", string)
+            # deleting the pdf and txt file
+            try:
+                os.remove("./assets/"+filename)
+                os.remove("./assets/"+txt)
+            except:
+                pass
+            return jsonify({"success": True, "message": "File uploaded successfully.", "data": string}), 200
+        else:
+            return jsonify({"success": False, "message": "File type not allowed"}), 400
+    except Exception as e:
+        print("ERR", e)
+        return jsonify({"success": False, "message": "Error in uploading file"}), 500
+
 @app.route("/store-bot-data", methods=["POST"])
 @cross_origin()
 @token_required
@@ -2206,6 +2247,12 @@ def train_with_pdf(username):
             print("Saving to memory")
             save_pdf_id(username, botid, given_id, list_id, secure_filename(inpt_file.filename).split(".")[0])
             print("Saved to memory successfully")
+            # removing the pdf file
+            try:
+                os.remove("./assets/"+filename)
+                print("Removed file")
+            except Exception as e:
+                print("Error in removing file", e)
             return jsonify({"success": True, "message": "Saved to memory successfully", "pdfid": given_id})
         else:
             return jsonify({"success": False, "message": error})
@@ -2781,7 +2828,7 @@ def login():
                     "success": True,
                     "message": "Logged in successfully",
                     "token": token,
-                    "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "linkedin": user[19], "twitter": user[20], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22]},
+                    "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "linkedin": user[19], "twitter": user[20], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22], "subscription": user[23], "verified": user[24]},
                     "bots": botsnew
                     }), 200
             else:
@@ -2834,7 +2881,7 @@ def google_login():
         botsnew = []
         # return data except password
         token = jwt.encode({'username': data["email"]}, "h1u2m3a4n5i6z7e8")
-        return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18]}}), 200
+        return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22], "subscription": user[23], "verified": user[24]}}), 200
 
 @app.route('/set-first-time-off', methods=['GET'])
 @cross_origin()
@@ -2921,7 +2968,9 @@ def general_user_info(username):
                     "pdfs": user[16],
                     "bots": user[17],
                     "setup": user[18],
-                    "firsttime": user[22]
+                    "firsttime": user[22],
+                    "subscription": user[23],
+                    "verified": user[24]
                     }, "bots": bots}), 200
     except Exception as e:
         print("ERROR", e)        
