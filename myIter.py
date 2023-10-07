@@ -1107,13 +1107,14 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     memory = []
     for i in result:
         # limiting each message to 100 words if it's bot's, else 200 words
+        content = i[4]
         if i[3] == "assistant":
             if len(i[4].split(" ")) > 150:
-                i[4] = " ".join(i[4].split(" ")[:150])
+                content = " ".join(i[4].split(" ")[:150])
         else:
             if len(i[4].split(" ")) > 200:
-                i[4] = " ".join(i[4].split(" ")[:200])
-        memory.append({"role": i[3], "content": i[4]})
+                content = " ".join(i[4].split(" ")[:200])
+        memory.append({"role": i[3], "content": content})
     memory.reverse()
     # print("Memory", memory)
     cur.close()
