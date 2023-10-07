@@ -1934,18 +1934,18 @@ def getBots(username):
         conn = mysql.connect()
         cur = conn.cursor()
         queryGetTalkedBots = "SELECT bots.botid, bots.username, bots.description AS bot_description, bots.interactions, bots.likes, bots.name AS bot_name, bots.pic AS bot_pic FROM bots INNER JOIN (SELECT DISTINCT botid FROM messages WHERE username = %s) AS user_interactions ON bots.botid = user_interactions.botid"
-        cur.execute("SELECT favBots FROM users WHERE username=%s OR email_id=%s", (username, username,),)
+        cur.execute("SELECT favBots FROM users WHERE username=%s OR email_id=%s", (username, username))
         favBots = json.loads(cur.fetchone()[0])
         favBots.append("")
-        # queryFavBots = """" SELECT botid, username, description, interactions, likes, name, pic FROM bots WHERE botid IN %s """"
+        # queryFavBots = """ SELECT botid, username, description, interactions, likes, name, pic FROM bots WHERE botid IN %s """
         # getting verified status from users table also with bots data
         queryFavBots = "SELECT b.botid, b.username, b.description, b.interactions, b.likes, b.name, b.pic, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.botid IN %s;"
         # queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 9"
         # getting verifies status for these too
-        queryTopBots = "SELECT bots.botid, bots.username, bots.description AS bot_description, bots.interactions, bots.likes, bots.name AS bot_name, bots.pic AS bot_pic FROM bots INNER JOIN (SELECT DISTINCT botid FROM messages WHERE username = %s) AS user_interactions ON bots.botid = user_interactions.botid WHERE bots.name IS NOT NULL ORDER BY bots.interactions DESC LIMIT 9"
+        queryTopBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.interactions DESC LIMIT 9;"
         # queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 6"
         # getting verifies status for these too
-        queryLatestBots = "SELECT bots.botid, bots.username, bots.description AS bot_description, bots.interactions, bots.likes, bots.name AS bot_name, bots.pic AS bot_pic FROM bots INNER JOIN (SELECT DISTINCT botid FROM messages WHERE username = %s) AS user_interactions ON bots.botid = user_interactions.botid WHERE bots.name IS NOT NULL ORDER BY bots.id DESC LIMIT 6"
+        queryLatestBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.id DESC LIMIT 6;"
         cur.execute(queryGetTalkedBots, (username,))
         talkedBots = cur.fetchall()
         print("Talked bots", talkedBots)
@@ -1975,7 +1975,9 @@ def loadMorePopularBots(offset):
     try:
         conn = mysql.connect()
         cur = conn.cursor()
-        query = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY interactions DESC LIMIT 150"
+        # query = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY interactions DESC LIMIT 150"
+        # query = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 150"
+        query = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.interactions DESC LIMIT 150;"
         cur.execute(query)
         # removing the bots until the last botid
         bots = cur.fetchall()
@@ -2002,7 +2004,9 @@ def loadMoreLatestBots(offset):
     try:
         conn = mysql.connect()
         cur = conn.cursor()
-        query = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY id DESC LIMIT 120"
+        # query = "SELECT botid, name, pic, description, interactions, likes FROM bots ORDER BY id DESC LIMIT 120"
+        # query = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 120"
+        query = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.id DESC LIMIT 120;"
         cur.execute(query)
         # removing the bots until the last botid
         bots = cur.fetchall()
@@ -2050,7 +2054,8 @@ def searchBots(username, query):
     try:
         conn = mysql.connect()
         cur = conn.cursor()
-        querytoexec = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name LIKE %s OR description LIKE %s OR botid LIKE %s ORDER BY interactions DESC LIMIT 100"
+        # querytoexec = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name LIKE %s OR description LIKE %s OR botid LIKE %s ORDER BY interactions DESC LIMIT 100"
+        querytoexec = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE (b.name LIKE %s OR b.description LIKE %s OR b.botid LIKE %s) AND b.name IS NOT NULL ORDER BY b.interactions DESC LIMIT 100;"
         cur.execute(querytoexec, ('%'+query+'%', '%'+query+'%', '%'+query+'%'))
         bots = cur.fetchall()
         conn.commit()
