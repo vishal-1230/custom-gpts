@@ -774,7 +774,7 @@ def chat_filter(userinput):
 
 def import_chat(className, user_msg, bot_msg):
 #this function imports the summary of the user message and the bot reply to the long term memory
-    client.data_object.create(class_name=className, data_object={"chat": "User: "+user_msg+"\nBot:"+bot_msg})
+    client.data_object.create(class_name=className, data_object={"chat": "User: "+user_msg+"\nBot:"+"Okay I'll remember that."})
     print("Chat imported")
   
 def save_chat(classname, inpt, response):
@@ -1106,6 +1106,13 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     result = cur.fetchall()
     memory = []
     for i in result:
+        # limiting each message to 100 words if it's bot's, else 200 words
+        if i[3] == "assistant":
+            if len(i[4].split(" ")) > 150:
+                i[4] = " ".join(i[4].split(" ")[:150])
+        else:
+            if len(i[4].split(" ")) > 200:
+                i[4] = " ".join(i[4].split(" ")[:200])
         memory.append({"role": i[3], "content": i[4]})
     memory.reverse()
     # print("Memory", memory)
@@ -1155,6 +1162,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
                     links = []
                 if links != []:
                     yield 'data: %s\n\n' % links
+                    response += str(links)
                 # stream ended successfully, saving the chat to database
                 print("Stream ended successfully")
                 # saving the chat to database
@@ -1929,9 +1937,15 @@ def getBots(username):
         cur.execute("SELECT favBots FROM users WHERE username=%s OR email_id=%s", (username, username,),)
         favBots = json.loads(cur.fetchone()[0])
         favBots.append("")
-        queryFavBots = "SELECT botid, username, description, interactions, likes, name, pic FROM bots WHERE botid IN %s"
-        queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 9"
-        queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 6"
+        # queryFavBots = """" SELECT botid, username, description, interactions, likes, name, pic FROM bots WHERE botid IN %s """"
+        # getting verified status from users table also with bots data
+        queryFavBots = "SELECT b.botid, b.username, b.description, b.interactions, b.likes, b.name, b.pic, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.botid IN %s;"
+        # queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 9"
+        # getting verifies status for these too
+        queryTopBots = "SELECT bots.botid, bots.username, bots.description AS bot_description, bots.interactions, bots.likes, bots.name AS bot_name, bots.pic AS bot_pic FROM bots INNER JOIN (SELECT DISTINCT botid FROM messages WHERE username = %s) AS user_interactions ON bots.botid = user_interactions.botid WHERE bots.name IS NOT NULL ORDER BY bots.interactions DESC LIMIT 9"
+        # queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 6"
+        # getting verifies status for these too
+        queryLatestBots = "SELECT bots.botid, bots.username, bots.description AS bot_description, bots.interactions, bots.likes, bots.name AS bot_name, bots.pic AS bot_pic FROM bots INNER JOIN (SELECT DISTINCT botid FROM messages WHERE username = %s) AS user_interactions ON bots.botid = user_interactions.botid WHERE bots.name IS NOT NULL ORDER BY bots.id DESC LIMIT 6"
         cur.execute(queryGetTalkedBots, (username,))
         talkedBots = cur.fetchall()
         print("Talked bots", talkedBots)
@@ -2161,7 +2175,14 @@ def training_tab(token, botid, message):
     # formatting chats to list of dicts having user or assistant
     chatsnew = []
     for chat in chats:
-        chatsnew.append({"role": chat[3], "content": chat[4]})
+        # limiting the chat to 100 words if sender is bot otherwise 300 words
+        words = chat[4].split()
+        first_50_words = ' '.join(words[:50])
+        first_200_words = ' '.join(words[:200])
+        if chat[3]=="user":
+            chatsnew.append({"role": chat[3], "content": first_200_words})
+        else:
+            chatsnew.append({"role": chat[3], "content": first_50_words})
     chatsnew.reverse()
     print("CHATSNEW", chatsnew)
 
