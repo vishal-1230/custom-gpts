@@ -1104,6 +1104,12 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
     result = cur.fetchall()
+    count = 0
+    queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM messages WHERE username=%s AND botid=%s AND sender='user' AND DATE(timestamp) = CURDATE();"
+    cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
+    result2 = cur.fetchone()
+    print("Result2", result2)
+    count = result2[0]
     memory = []
     for i in result:
         # limiting each message to 100 words if it's bot's, else 200 words
@@ -1132,55 +1138,67 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     print("Chats going are: ", chatsToSend)
 
     def streamResponse():
-        print("Prompt", given_prompt)
-        generated_text = openai.ChatCompletion.create(                                 
-            model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
-            messages=[
-                {"role": "system", "content": given_prompt},
-                *chatsToSend,
-                {"role": "user", "content": inpt},
-            ], 
-            temperature=0.7,
-            max_tokens=1024,
-            stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
-        )
-        
-        response = ""
-        for i in generated_text:
-            # print("I", i)
-            if i["choices"][0]["delta"] != {}:
-                # print("Sent", str(i))
-                yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
-                response += i["choices"][0]["delta"]["content"]
-            else:
-                print("AllowIms?")
-                print(allowImages)
-                # messages sent in chunks, now sending the links
-                if allowImages:
-                    links = query_image(className_b+"_images", inpt)
-                    print("Links", links)
-                else:
-                    links = []
-                if links != []:
-                    yield 'data: %s\n\n' % links
-                    response += str(links)
-                # stream ended successfully, saving the chat to database
-                print("Stream ended successfully")
-                # saving the chat to database
-                # def add_to_history():
-                #     import_chat(className_b+"_ltm", inpt, response) 
-                # t1 = threading.Thread(target=add_to_history)
-                # t1.start()
-                conn = mysql.connect()
-                cur = conn.cursor()
-                query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
-                cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
-                cur.execute(queryToIncreaseInteraction, (className_b,))
-                conn.commit()
-                cur.close()
+        if count >= 30:
+            print("Count", count)
+            yield 'data: %s\n\n' % "Today's limit here is exhausted, to continue chatting you can use the DTU Bot on https://humanizeai.in/DTUHELP or create your own."
+            # adding the message to the database
+            conn = mysql.connect()
+            cur = conn.cursor()
+            query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+            cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
+            cur.execute(query, (classname, className_b, "assistant", "Today's limit here is exhausted, to continue chatting you can use the DTU Bot on https://humanizeai.in/DTUHELP or create your own.", datetime.datetime.now()))
+            conn.commit()
+            cur.close()
+        else:
+            print("Prompt", given_prompt)
+            generated_text = openai.ChatCompletion.create(                                 
+                model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
+                messages=[
+                    {"role": "system", "content": given_prompt},
+                    *chatsToSend,
+                    {"role": "user", "content": inpt},
+                ], 
+                temperature=0.7,
+                max_tokens=1024,
+                stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
+            )
             
+            response = ""
+            for i in generated_text:
+                # print("I", i)
+                if i["choices"][0]["delta"] != {}:
+                    # print("Sent", str(i))
+                    yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
+                    response += i["choices"][0]["delta"]["content"]
+                else:
+                    print("AllowIms?")
+                    print(allowImages)
+                    # messages sent in chunks, now sending the links
+                    if allowImages:
+                        links = query_image(className_b+"_images", inpt)
+                        print("Links", links)
+                    else:
+                        links = []
+                    if links != []:
+                        yield 'data: %s\n\n' % links
+                        response += str(links)
+                    # stream ended successfully, saving the chat to database
+                    print("Stream ended successfully")
+                    # saving the chat to database
+                    # def add_to_history():
+                    #     import_chat(className_b+"_ltm", inpt, response) 
+                    # t1 = threading.Thread(target=add_to_history)
+                    # t1.start()
+                    conn = mysql.connect()
+                    cur = conn.cursor()
+                    query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+                    queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
+                    cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
+                    cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
+                    cur.execute(queryToIncreaseInteraction, (className_b,))
+                    conn.commit()
+                    cur.close()
+                
     return Response(streamResponse(), mimetype='text/event-stream')
 
 def connect_api(classname, className_b, subscription, inpt, allowImages, b_botrole, b_steps, comp_info=""):
@@ -2429,7 +2447,7 @@ def getMyBotDetails(username, botid):
         print(e)
         return jsonify({"success": False, "message": "Error in fetching bot data"}), 500
 
-@app.route("/api/message-bot/<token>/<message>", methods=["GET"]) # only api token and message required in url
+@app.route("/api/message-bot-test/<token>/<message>", methods=["GET"]) # only api token and message required in url
 @cross_origin()
 def messageBot_api(token, message):
     # getting the username and botid from the token
