@@ -1029,14 +1029,14 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
     print("GOT", className_b)
     print("Getting ltm for ", inpt)
 
-    context = query(botid, inpt)
-    ltm = query(botid+"_ltm", inpt)
-    print("Got ltm", ltm)
+    # context = query(botid, inpt)
+    # ltm = query(botid+"_ltm", inpt)
+    # print("Got ltm", ltm)
     # getting short term chats
 
     #making a prompt with bot role, user input and long term memory
     # given_prompt = training_prompt(str(botrole), str(context), str(steps), str(comp_info), str(ltm))
-    given_prompt = """You're a great learner about the user. If user tells you some information say that okay, you'll remember the given information. You have to replicate the following role: """ + str(botrole)+ """And Following is the information about the user's company."""+str(comp_info)+"\n\nYou have memory and you remember all the conversation between you and the user. Always ask follow up questions and try to know more about the user. Remember whatever user says you.\n\nThese are some things you already know regarding the given query: """+str(context)
+    given_prompt = """You're a great learner about the user. If user tells you some information say that okay, you'll remember the given information. You have to replicate the following role: """ + str(botrole)+ """And Following is the information about the user's company."""+str(comp_info)+"\n\nYou have memory and you remember all the conversation between you and the user. Always ask follow up questions and try to know more about the user. Remember whatever user says you."""
     # given_prompt = training_prompt(str(botrole), context, steps)
 
     # llm_chain = LLMChain(
@@ -1046,7 +1046,7 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
 
     # response = llm_chain.predict(human_input=inpt)
     #import this conversation to the long term memory
-    modified_ltm = parse_messages(ltm)
+    # modified_ltm = parse_messages(ltm)
 
     def streamResponse():
         print("Prompt", given_prompt)
@@ -1054,7 +1054,7 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": given_prompt},
-                *modified_ltm,
+                # *modified_ltm,
                 *memory,
                 {"role": "user", "content": inpt},
             ], 
@@ -2475,7 +2475,7 @@ def getMyBotDetails(username, botid):
         print(e)
         return jsonify({"success": False, "message": "Error in fetching bot data"}), 500
 
-@app.route("/api/message-bot-test/<token>/<path:message>", methods=["GET"]) # only api token and message required in url
+@app.route("/api/message-bot/<token>/<path:message>", methods=["GET"]) # only api token and message required in url
 @cross_origin()
 def messageBot_api(token, message):
     # getting the username and botid from the token
