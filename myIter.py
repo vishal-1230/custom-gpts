@@ -1089,6 +1089,8 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
     return Response(streamResponse(), mimetype='text/event-stream')
 
 def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, b_steps, comp_info=""):
+    ipaddress = request.remote_addr
+    print("IP", ipaddress)
 
     if subscription == None:
         subscription = 0
@@ -1216,6 +1218,12 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
     conn = mysql.connect()
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
+    count = 0
+    queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM api_calls WHERE username=%s AND botid=%s AND sender='user' AND DATE(timestamp) = CURDATE();"
+    cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
+    result2 = cur.fetchone()
+    print("api calls", result2)
+    count = result2[0]
     result = cur.fetchall()
     # queryToCheckApiCalls = "SELECT * FROM api_calls WHERE botid=%s"
     # cur.execute(queryToCheckApiCalls, (className_b,))
@@ -1238,57 +1246,76 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
         chatsToSend = [*memory]
     # print("Modified", modified_ltm)
 
+    if subscription == 0:
+        max_count = 20
+    elif subscription == 1:
+        max_count = 50
+    elif subscription == 2:
+        max_count = 50
+    else:
+        max_count = 100
     def streamResponse():
-        print("Prompt", given_prompt)
-        generated_text = openai.ChatCompletion.create(                                 
-            model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
-            messages=[
-                {"role": "system", "content": given_prompt},
-                *chatsToSend,
-                {"role": "user", "content": inpt},
-            ], 
-            temperature=0.7,
-            max_tokens=1024,
-            stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
-        )
-        
-        response = ""
-        for i in generated_text:
-            # print("I", i)
-            if i["choices"][0]["delta"] != {}:
-                # print("Sent", str(i))
-                yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
-                response += i["choices"][0]["delta"]["content"]
-            else:
-                conn = mysql.connect()
-                cur = conn.cursor()
-                queryAddApiCall = "INSERT INTO api_calls (username, botid, input_tokens, response_tokens) VALUES (%s, %s, %s, %s)"
-                # calc openai tokens from the message
-                input_tokens = int(gpt3_tokenizer.count_tokens(inpt))
-                response_tokens = int(gpt3_tokenizer.count_tokens(response))
-                cur.execute(queryAddApiCall, (classname, className_b, input_tokens, response_tokens))
-                print("AllowIms?")
-                print(allowImages)
-                # messages sent in chunks, now sending the links
-                if allowImages:
-                    links = query_image(className_b+"_images", inpt)
-                    print("Links", links)
-                else:
-                    links = []
-                if links != []:
-                    yield 'data: %s\n\n' % links
-                # stream ended successfully, saving the chat to database
-                print("Stream ended successfully")
-                conn = mysql.connect()
-                cur = conn.cursor()
-                query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
-                cur.execute(query, ((str(classname)+"_api_messages"), className_b, "user", str(inpt), datetime.datetime.now()))
-                cur.execute(query, ((str(classname)+"_api_messages"), className_b, "assistant", str(response), datetime.datetime.now()))
-                cur.execute(queryToIncreaseInteraction, (className_b,))
-                conn.commit()
-                cur.close()
+        if count >= max_count:
+            print("Count", count)
+            yield 'data: %s\n\n' % f"Today's API limit is crossed here, you can continue chatting with the {className_b} bot for free at https://humanizeai.in/{className_b} or create your own."
+            # adding the message to the database
+            conn = mysql.connect()
+            cur = conn.cursor()
+            cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
+            cur.execute(query, (classname, className_b, "assistant", f"Today's API limit crossed, you can continue chatting with the {className_b} bot at https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
+            conn.commit()
+            cur.close()
+        else:
+            print("Prompt", given_prompt)
+            generated_text = openai.ChatCompletion.create(                                 
+                model="gpt-3.5-turbo" if subscription <= 1 else "gpt-4",
+                messages=[
+                    {"role": "system", "content": given_prompt},
+                    *chatsToSend,
+                    {"role": "user", "content": inpt},
+                ], 
+                temperature=0.7,
+                max_tokens=1024,
+                stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
+            )
             
+            response = ""
+            for i in generated_text:
+                # print("I", i)
+                if i["choices"][0]["delta"] != {}:
+                    # print("Sent", str(i))
+                    yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
+                    response += i["choices"][0]["delta"]["content"]
+                else:
+                    conn = mysql.connect()
+                    cur = conn.cursor()
+                    queryAddApiCall = "INSERT INTO api_calls (username, botid, input_tokens, response_tokens) VALUES (%s, %s, %s, %s)"
+                    # calc openai tokens from the message
+                    input_tokens = int(gpt3_tokenizer.count_tokens(inpt))
+                    response_tokens = int(gpt3_tokenizer.count_tokens(response))
+                    cur.execute(queryAddApiCall, (classname, className_b, input_tokens, response_tokens))
+                    print("AllowIms?")
+                    print(allowImages)
+                    # messages sent in chunks, now sending the links
+                    if allowImages:
+                        links = query_image(className_b+"_images", inpt)
+                        print("Links", links)
+                    else:
+                        links = []
+                    if links != []:
+                        yield 'data: %s\n\n' % links
+                    # stream ended successfully, saving the chat to database
+                    print("Stream ended successfully")
+                    conn = mysql.connect()
+                    cur = conn.cursor()
+                    query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+                    queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
+                    cur.execute(query, ((str(classname)+"_api_messages"), className_b, "user", str(inpt), datetime.datetime.now()))
+                    cur.execute(query, ((str(classname)+"_api_messages"), className_b, "assistant", str(response), datetime.datetime.now()))
+                    cur.execute(queryToIncreaseInteraction, (className_b,))
+                    conn.commit()
+                    cur.close()
+                
     return Response(streamResponse(), mimetype='text/event-stream')
 
 print(int(gpt3_tokenizer.count_tokens("abcddd")))
@@ -2407,7 +2434,8 @@ def upload_image(username):
     else:
         return jsonify({"success": False, "message": "Please upload the image in JPG, JPEG or PNG format"})
 
-
+token = jwt.encode({"username": "shubh622005@gmail.com"}, "h1u2m3a4n5i6z7e8")
+print("Token", token)
 
 # APIs Functions
 @app.route("/get-api-key/<botid>", methods=["GET"])
@@ -2447,7 +2475,7 @@ def getMyBotDetails(username, botid):
         print(e)
         return jsonify({"success": False, "message": "Error in fetching bot data"}), 500
 
-@app.route("/api/message-bot-test/<token>/<message>", methods=["GET"]) # only api token and message required in url
+@app.route("/api/message-bot-test/<token>/<path:message>", methods=["GET"]) # only api token and message required in url
 @cross_origin()
 def messageBot_api(token, message):
     # getting the username and botid from the token
@@ -2455,6 +2483,7 @@ def messageBot_api(token, message):
     if not token:
         return jsonify({'message': 'Token is missing !!', "success": False}), 401
     try:
+        message = urllib.parse.unquote(message)
         # decoding the payload to fetch the stored details
         data = jwt.decode(token, "h1u2m3a4n5i6z7e8", algorithms=["HS256"])
         print("decr data", data)
@@ -2858,7 +2887,7 @@ def login():
             if check_password_hash(correctpass, password):
                 # return data except password
                 bots_query = "SELECT * FROM bots WHERE username=%s"
-                cur.execute(bots_query, (username,))
+                cur.execute(bots_query, (user[5],))
                 bots = cur.fetchall()
                 print("BOTS", list(bots))
                 botsnew = []
@@ -2923,10 +2952,22 @@ def google_login():
         token = jwt.encode({'username': email_id}, "h1u2m3a4n5i6z7e8")
         return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": name, "email_id": email_id, "pic": pic}}), 200
     else:
+        bots_query = "SELECT * FROM bots WHERE username=%s"
+        cur.execute(bots_query, (user[5],))
+        bots = cur.fetchall()
+        print("BOTS", list(bots))
         botsnew = []
+        for bot in bots:
+            botsnew.append(list(bot))
         # return data except password
         token = jwt.encode({'username': data["email"]}, "h1u2m3a4n5i6z7e8")
-        return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22], "subscription": user[23], "verified": user[24]}}), 200
+        return jsonify({
+            "success": True,
+            "message": "Logged in successfully",
+            "token": token,
+            "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22], "subscription": user[23], "verified": user[24]},
+            "bots": botsnew
+        }), 200
 
 @app.route('/set-first-time-off', methods=['GET'])
 @cross_origin()
