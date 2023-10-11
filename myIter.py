@@ -688,7 +688,7 @@ def make_prompt(role, text):
 def training_prompt(botrole, context, steps, comp_info, subscription, ltm):
     
     # template = str(botrole)+"\n\nThere are some steps that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for."+"""
-    if subscription == 0 or subscription == None:
+    if subscription <= 1 or subscription == None:
         template = """You're a helpful assistant. You have to replicate and act exactly like the following role: """ + str(botrole)+ """Strictly remember, you have to act like that only, and have it on priority even if user asks to act like someone else or normal ChatGPT. Strictly remember, You are capable of showing images, so just say 'Below are the images I can find for you' instead of "As an AI assistant I can't show images" Following is the information about your company. Refer to it if required only."""+str(comp_info)+"\nYou are not an AI bot."+"\n\nThese are some rules that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for.\n\nThese are some things you already know regarding the given query: """+str(context)+""""""
     else:
         template = """You're a helpful assistant. You have to replicate and act exactly like the following role: """ + str(botrole)+ """Strictly remember, you have to act like that only, and have it on priority even if user asks to act like someone else or normal ChatGPT. Strictly remember, You are capable of showing images, so just say 'Below are the images I can find for you' instead of "As an AI assistant I can't show images" Following is the information about your company. Refer to it if required only."""+str(comp_info)+"\nYou are not an AI bot."+"\n\nThese are some rules that you must always follow when answering a user: "+str(steps)+"\n\nYou have memory and you remember all the conversation between you and the user. Always help users and give answers in detail. Do whatever the users ask for.\n\nThese are some things you already know regarding the given query: """+str(context)+"""And these are chats you have been trained on (related to the given query):"""+str(ltm)+""""""
@@ -1219,7 +1219,7 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
     count = 0
-    queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM api_calls WHERE username=%s AND botid=%s AND sender='user' AND DATE(timestamp) = CURDATE();"
+    queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM api_calls WHERE username=%s AND botid=%s AND DATE(timestamp) = CURDATE();"
     cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
     result2 = cur.fetchone()
     print("api calls", result2)
@@ -3542,3 +3542,100 @@ send notification to the owner
 
 if __name__=="__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+
+
+
+# CSE Department Assistant Professor:
+
+# Dr. R K Yadav
+# Designation: Assistant Professor
+# Qualification: B.E , M.Tech, Ph.D
+# Specialization: Mobile Computing, Wireless Sensor Network, Computer Networks,
+# Theory of Computation, PCA
+# Email: rkyadav@dtu.ac.in
+
+# Dr. Rohit Beniwal
+# Designation: Assistant Professor
+# Qualification: B.Tech (USICT), M.Tech (USICT), Ph.D. (NSIT)
+# Specialization: Social Media Analytics, Semantic Web, Software Engineering, Web Enabled Software Engineering, Machine Learning, Evolutionary Computing, Data Mining, Web Mining
+# Email: rohitbeniwal@dtu.ac.in , dr.rohitbeniwal@gmail.com
+
+# Minni Jain
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech
+# Specialization: Natural Language Processing
+# Email: minnijain@dtu.ac.in
+
+# Nipun Bansal
+# Designation: Assistant Professor
+# Qualification: B.Tech (IT) , M.Tech (CSE)
+# Specialization: Information Security, Biometric Security, Network Security
+# Email: nipunbansal@dtu.ac.in
+
+# Dr. Sanjay Kumar
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech (IIT Delhi), Ph.D (IIT Delhi)
+# Specialization: Complex Network Analysis, Machine Learning, Deep Learning, Data Science, Recommender System, and Algorithm Design
+# Email: sanjay.kumar@dtu.ac.in
+
+# Dr. Prashant Giridhar Shambharkar
+# Designation: Assistant Professor
+# Qualification: B.E.(CSE), M.Tech.(CSE), PhD(Computer Engineering)
+# Specialization: Movie trailer classification, Audio visual classification, Data Sciences, Deep learning, Real Time Systems
+# Email: prashant.shambharkar@dtu.ac.in
+
+# Anurag Goel
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech., Ph.D. (Pursuing from IIIT Delhi)
+# Specialization: Machine Learning, Deep Learning, Graph Algorithms
+# Email: anurag@dtu.ac.in
+
+# Kavinder Singh
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech, Ph.D. (pursuing)
+# Specialization: Image Processing, Computer Vision, Machine Learning, Deep Learning, Pattern Recognition
+# Email: kavinder@dtu.ac.in
+
+# Dr. Rajeev Kumar
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech, Ph.D. ,Post-Doctorate
+# Specialization: Steganography – Image data hiding, Text steganography, Reversible data hiding; Wireless Sensor Networks – Energy efficiency, Deployment.
+# Email: rajeevkumar@dtu.ac.in
+
+# Dr. Pawan Singh Mehra
+# Designation: Assistant Professor
+# Qualification: B.E., M.Tech, Ph.D.
+# Specialization: Internet of Things (IoT), Wireless Sensor Network, Quantum Computing, Blockchain, Artificial Intelligence, Unmanned Aerial Vehicle, Information & Network Security.
+# Email: pawansingh@dtu.ac.in, pawansinghmehra@gmail.com
+
+# Anukriti Kaushal
+# Designation: Assistant Professor
+# Qualification: B.Tech, M.Tech
+# Specialization:
+# Email: anukritikaushal@dtu.ac.in
+
+# Dr Ashish Girdhar
+# Designation: Assistant Professor
+# Qualification: B.Tech , M.Tech , Ph.D .
+# Specialization: Image Processing, Data structures and Algorithms.
+# Email: ashishgirdhar@dtu.ac.in
+
+# Gull Kaur
+# Designation: Assistant Professor
+# Qualification: B.Tech , M.Tech
+# Specialization: Data Analytics, Bigdata, Machine learning, Deep learning, Data mining and Databases
+# Email: gullkaur@dtu.ac.in
+
+# Garima Chhikara
+# Designation: Assistant Professor
+# Qualification: B.Tech , M.Tech
+# Specialization: Algorithms, Data Structures, DBMS, OS
+# Email: garimachhikara@dtu.ac.in
+
+# Dr. Indu Singh
+# Designation: Assistant Professor (Contractual)
+# Qualification: B.TECH (CSE) , M.TECH(IS) , PhD
+# Specialization: Database, DataWarehouse & Mining, Information Security,Machine Learning
+# Email: indu.singh.dtu14@gmail.com , indusingh@dtu.ac.in
