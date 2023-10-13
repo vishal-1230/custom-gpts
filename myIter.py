@@ -434,8 +434,8 @@ def OCRFINAL(pdf_name, output_file, out_directory=Path("~").expanduser(), dpi=20
         
         paragraphs = []
         words = textFinal.split()
-        for i in range(0, len(words), 250):
-            paragraphs.append(' '.join(words[i:i+250]))
+        for i in range(0, len(words), 150):
+            paragraphs.append(' '.join(words[i:i+150]))
         
         if os.path.exists(text_file):
             os.remove(text_file)
@@ -838,7 +838,8 @@ def query(className, content):
     for i in range(5):
         try:
             print("Result 1", str(result['data']['Get'][str(className)[0].upper() + str(className)[1:]]))
-            context = context+" "+str(result['data']["Get"][str(className)[0].upper() + str(className)[1:]][i]["chat"])+", "
+            # 200 words max in each chat
+            context = context + " " + str(result['data']["Get"][str(className)[0].upper() + str(className)[1:]][i]["chat"]) + "..., "
         except:
             pass
 
@@ -1095,17 +1096,25 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     if subscription == None:
         subscription = 0
 
-    context = query(className_b, inpt)
-    print("Found context", context, "for", inpt)
-    #using context from database as input for images
-    ltm = query(className_b+"_ltm", inpt)
-    print("Thinking with ltm", ltm)
     # memory = stm(className_b+"_chats_with_"+classname, 4)
     query2 = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 4"
     conn = mysql.connect()
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
     result = cur.fetchall()
+
+    # if input is short, also put previous messages in the context
+    # if len(inpt.split(" ")) < 10 and len(result) > 0:
+    #     inptToSearch = input + "(" + result[0][4].split(" ")[:10] + ")"
+    # else:
+    #     inptToSearch = inpt
+
+    context = query(className_b, inpt)
+    print("Found context", context, "for", inpt)
+    #using context from database as input for images
+    ltm = query(className_b+"_ltm", inpt)
+    print("Thinking with ltm", ltm)
+    
     count = 0
     queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM messages WHERE username=%s AND botid=%s AND sender='user' AND DATE(timestamp) = CURDATE();"
     cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
@@ -3542,100 +3551,3 @@ send notification to the owner
 
 if __name__=="__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
-
-
-
-# CSE Department Assistant Professor:
-
-# Dr. R K Yadav
-# Designation: Assistant Professor
-# Qualification: B.E , M.Tech, Ph.D
-# Specialization: Mobile Computing, Wireless Sensor Network, Computer Networks,
-# Theory of Computation, PCA
-# Email: rkyadav@dtu.ac.in
-
-# Dr. Rohit Beniwal
-# Designation: Assistant Professor
-# Qualification: B.Tech (USICT), M.Tech (USICT), Ph.D. (NSIT)
-# Specialization: Social Media Analytics, Semantic Web, Software Engineering, Web Enabled Software Engineering, Machine Learning, Evolutionary Computing, Data Mining, Web Mining
-# Email: rohitbeniwal@dtu.ac.in , dr.rohitbeniwal@gmail.com
-
-# Minni Jain
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech
-# Specialization: Natural Language Processing
-# Email: minnijain@dtu.ac.in
-
-# Nipun Bansal
-# Designation: Assistant Professor
-# Qualification: B.Tech (IT) , M.Tech (CSE)
-# Specialization: Information Security, Biometric Security, Network Security
-# Email: nipunbansal@dtu.ac.in
-
-# Dr. Sanjay Kumar
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech (IIT Delhi), Ph.D (IIT Delhi)
-# Specialization: Complex Network Analysis, Machine Learning, Deep Learning, Data Science, Recommender System, and Algorithm Design
-# Email: sanjay.kumar@dtu.ac.in
-
-# Dr. Prashant Giridhar Shambharkar
-# Designation: Assistant Professor
-# Qualification: B.E.(CSE), M.Tech.(CSE), PhD(Computer Engineering)
-# Specialization: Movie trailer classification, Audio visual classification, Data Sciences, Deep learning, Real Time Systems
-# Email: prashant.shambharkar@dtu.ac.in
-
-# Anurag Goel
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech., Ph.D. (Pursuing from IIIT Delhi)
-# Specialization: Machine Learning, Deep Learning, Graph Algorithms
-# Email: anurag@dtu.ac.in
-
-# Kavinder Singh
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech, Ph.D. (pursuing)
-# Specialization: Image Processing, Computer Vision, Machine Learning, Deep Learning, Pattern Recognition
-# Email: kavinder@dtu.ac.in
-
-# Dr. Rajeev Kumar
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech, Ph.D. ,Post-Doctorate
-# Specialization: Steganography – Image data hiding, Text steganography, Reversible data hiding; Wireless Sensor Networks – Energy efficiency, Deployment.
-# Email: rajeevkumar@dtu.ac.in
-
-# Dr. Pawan Singh Mehra
-# Designation: Assistant Professor
-# Qualification: B.E., M.Tech, Ph.D.
-# Specialization: Internet of Things (IoT), Wireless Sensor Network, Quantum Computing, Blockchain, Artificial Intelligence, Unmanned Aerial Vehicle, Information & Network Security.
-# Email: pawansingh@dtu.ac.in, pawansinghmehra@gmail.com
-
-# Anukriti Kaushal
-# Designation: Assistant Professor
-# Qualification: B.Tech, M.Tech
-# Specialization:
-# Email: anukritikaushal@dtu.ac.in
-
-# Dr Ashish Girdhar
-# Designation: Assistant Professor
-# Qualification: B.Tech , M.Tech , Ph.D .
-# Specialization: Image Processing, Data structures and Algorithms.
-# Email: ashishgirdhar@dtu.ac.in
-
-# Gull Kaur
-# Designation: Assistant Professor
-# Qualification: B.Tech , M.Tech
-# Specialization: Data Analytics, Bigdata, Machine learning, Deep learning, Data mining and Databases
-# Email: gullkaur@dtu.ac.in
-
-# Garima Chhikara
-# Designation: Assistant Professor
-# Qualification: B.Tech , M.Tech
-# Specialization: Algorithms, Data Structures, DBMS, OS
-# Email: garimachhikara@dtu.ac.in
-
-# Dr. Indu Singh
-# Designation: Assistant Professor (Contractual)
-# Qualification: B.TECH (CSE) , M.TECH(IS) , PhD
-# Specialization: Database, DataWarehouse & Mining, Information Security,Machine Learning
-# Email: indu.singh.dtu14@gmail.com , indusingh@dtu.ac.in
