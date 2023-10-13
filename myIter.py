@@ -1149,7 +1149,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     print("Chats going are: ", chatsToSend)
 
     def streamResponse():
-        if count >= 30:
+        if count >= 100:
             print("Count", count)
             yield 'data: %s\n\n' % "Today's limit here is exhausted, to continue chatting you can use the DTU Bot on https://humanizeai.in/DTUHELP or create your own."
             # adding the message to the database
