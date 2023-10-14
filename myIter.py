@@ -1227,19 +1227,19 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
     conn = mysql.connect()
     cur = conn.cursor()
     cur.execute(query2, (classname, className_b))
+    msgs = cur.fetchall()
     count = 0
     queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM api_calls WHERE username=%s AND botid=%s AND DATE(timestamp) = CURDATE();"
     cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
     result2 = cur.fetchone()
     print("api calls", result2)
     count = result2[0]
-    result = cur.fetchall()
     # queryToCheckApiCalls = "SELECT * FROM api_calls WHERE botid=%s"
     # cur.execute(queryToCheckApiCalls, (className_b,))
     # api_calls = cur.fetchall()
     # conn.commit()
     memory = []
-    for i in result:
+    for i in msgs:
         memory.append({"role": i[3], "content": i[4]})
     memory.reverse()
     # print("Memory", memory)
@@ -1253,7 +1253,8 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
         chatsToSend = [*modified_ltm, *memory]
     else:
         chatsToSend = [*memory]
-    # print("Modified", modified_ltm)
+    print("LTM", modified_ltm)
+    print("Sending chats", chatsToSend)
 
     if subscription == 0:
         max_count = 20
