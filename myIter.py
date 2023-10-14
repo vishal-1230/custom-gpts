@@ -1251,9 +1251,9 @@ def connect_api(classname, className_b, subscription, inpt, allowImages, b_botro
     if subscription == 0 or subscription == None:
         modified_ltm = parse_messages(ltm)
         chatsToSend = [*modified_ltm, *memory]
+        print("LTM", modified_ltm)
     else:
         chatsToSend = [*memory]
-    print("LTM", modified_ltm)
     print("Sending chats", chatsToSend)
 
     if subscription == 0:
