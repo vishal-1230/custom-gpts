@@ -1364,7 +1364,10 @@ def save_pdf_id(username, botid, given_id, weaviate_ids, title="Document"):
     query3 = "SELECT pdfs FROM users WHERE username=%s OR email_id=%s"
     cur.execute(query3, (username, username,))
     result = cur.fetchall()
-    pdfs = json.loads(result[0][0])
+    if result[0][0]==None:
+        pdfs = []
+    else:
+        pdfs = json.loads(result[0][0])
     pdfs.append({"id": given_id, "title": title})
     query4 = "UPDATE users SET pdfs=%s WHERE username=%s OR email_id=%s"
     cur.execute(query4, (json.dumps(pdfs), username, username))
@@ -2998,12 +3001,11 @@ def login():
             if check_password_hash(correctpass, password):
                 # return data except password
                 bots_query = "SELECT * FROM bots WHERE username=%s"
-                cur.execute(bots_query, (user[5],))
-                bots = cur.fetchall()
-                print("BOTS", list(bots))
-                botsnew = []
-                for bot in bots:
-                    botsnew.append(list(bot))
+                if (user[5] != None):
+                    cur.execute(bots_query, (user[5],))
+                    bots = cur.fetchall()
+                else:
+                    bots = []
                 # jwt token
                 # if user[5] != None:
                     # token = jwt.encode({'username': user[5]}, "h1u2m3a4n5i6z7e8")
@@ -3014,7 +3016,7 @@ def login():
                     "message": "Logged in successfully",
                     "token": token,
                     "data": {"name": user[1], "phone": user[2], "email_id": user[3], "username": user[5], "pic": user[6], "purpose": user[7], "plan": user[8], "whatsapp": user[9], "youtube": user[10], "instagram": user[11], "discord": user[12], "telegram": user[13], "website": user[14], "linkedin": user[19], "twitter": user[20], "favBots": user[15], "pdfs": user[16], "bots": user[17], "setup": user[18], "firsttime": user[22], "subscription": user[23], "verified": user[24]},
-                    "bots": botsnew
+                    "bots": bots
                     }), 200
             else:
                 return jsonify({"success": False, "message": "Incorrect password"}), 400
@@ -3064,12 +3066,13 @@ def google_login():
         return jsonify({"success": True, "message": "Logged in successfully", "token": token, "data": {"name": name, "email_id": email_id, "pic": pic}}), 200
     else:
         bots_query = "SELECT * FROM bots WHERE username=%s"
-        cur.execute(bots_query, (user[5],))
-        bots = cur.fetchall()
+        if (user[5] != None):
+            cur.execute(bots_query, (user[5],))
+            bots = cur.fetchall()
+        else:
+            bots = []
         print("BOTS", list(bots))
-        botsnew = []
-        for bot in bots:
-            botsnew.append(list(bot))
+        botsnew = bots
         # return data except password
         token = jwt.encode({'username': data["email"]}, "h1u2m3a4n5i6z7e8")
         return jsonify({
