@@ -822,14 +822,14 @@ def get_client_data(client_class_Name):
     except:
         return None, None, None, None, None
 
-def query(className, content, limit=5):
+def query(className, content):
 
     nearText = {"concepts": [content]}
 
     result = (client.query
     .get(className, ["chat"])
     .with_near_text(nearText)
-    .with_limit(limit)
+    .with_limit(5)
     .do()
     )
     context=""
@@ -1109,6 +1109,12 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     # else:
     #     inptToSearch = inpt
 
+    context = query(className_b, inpt)
+    print("Found context", context, "for", inpt)
+    #using context from database as input for images
+    ltm = query(className_b+"_ltm", inpt)
+    print("Thinking with ltm", ltm)
+    
     count = 0
     queryToCheckTodaysUserBotChatsCount = "SELECT COUNT(*) AS message_count FROM messages WHERE username=%s AND botid=%s AND sender='user' AND DATE(timestamp) = CURDATE();"
     cur.execute(queryToCheckTodaysUserBotChatsCount, (classname, className_b))
@@ -1131,251 +1137,98 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     cur.close()
     conn.close()
 
-    try:
-        context = query(className_b, inpt)
-        print("Found context", context, "for", inpt)
-        #using context from database as input for images
-        ltm = query(className_b+"_ltm", inpt)
-        print("Thinking with ltm", ltm)
-        
-        given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
+    given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
 
-        if subscription == 0 or subscription == None:
-            modified_ltm = parse_messages(ltm)
-            chatsToSend = [*modified_ltm, *memory]
+    if subscription == 0 or subscription == None:
+        modified_ltm = parse_messages(ltm)
+        chatsToSend = [*modified_ltm, *memory]
+    else:
+        chatsToSend = [*memory]
+    # print("Modified", modified_ltm)
+
+    print("Chats going are: ", chatsToSend)
+
+    def streamResponse():
+        if count >= 100:
+            print("Count", count)
+            yield 'data: %s\n\n' % f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own."
+            # adding the message to the database
+            conn = mysql.connect()
+            cur = conn.cursor()
+            query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+            cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
+            cur.execute(query, (classname, className_b, "assistant", f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
+            conn.commit()
+            cur.close()
         else:
-            chatsToSend = [*memory]
-        # print("Modified", modified_ltm)
-
-        print("Chats going are: ", chatsToSend)
-
-        def streamResponse():
-            if count >= 100:
-                print("Count", count)
-                yield 'data: %s\n\n' % f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own."
-                # adding the message to the database
-                conn = mysql.connect()
-                cur = conn.cursor()
-                query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                cur.execute(query, (classname, className_b, "assistant", f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
-                conn.commit()
-                cur.close()
-            else:
-                print("Prompt", given_prompt)
-                generated_text = openai.ChatCompletion.create(                                 
-                    model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
-                    messages=[
-                        {"role": "system", "content": given_prompt},
-                        *chatsToSend,
-                        {"role": "user", "content": inpt},
-                    ], 
-                    temperature=0.7,
-                    max_tokens=1024,
-                    stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
-                )
-                
-                response = ""
-                for i in generated_text:
-                    # print("I", i)
-                    if i["choices"][0]["delta"] != {}:
-                        # print("Sent", str(i))
-                        yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
-                        response += i["choices"][0]["delta"]["content"]
+            input_tokens = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
+            if input_tokens > 3072:
+                # remove first memory msg
+                memory.pop(0)
+                if subscription == 0 or subscription == None:
+                    chatsToSend = [*modified_ltm, *memory]
+                else:
+                    chatsToSend = [*memory]
+                new_count = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
+                if new_count > 3072:
+                    # remove second memory msg
+                    memory.pop(0)
+                    if subscription == 0 or subscription == None:
+                        chatsToSend = [*modified_ltm, *memory]
                     else:
-                        print("AllowIms?")
-                        print(allowImages)
-                        # messages sent in chunks, now sending the links
-                        if allowImages:
-                            links = query_image(className_b+"_images", inpt)
-                            print("Links", links)
-                        else:
-                            links = []
-                        if links != []:
-                            yield 'data: %s\n\n' % links
-                            response += str(links)
-                        # stream ended successfully, saving the chat to database
-                        print("Stream ended successfully")
-                        # saving the chat to database
-                        # def add_to_history():
-                        #     import_chat(className_b+"_ltm", inpt, response) 
-                        # t1 = threading.Thread(target=add_to_history)
-                        # t1.start()
-                        conn = mysql.connect()
-                        cur = conn.cursor()
-                        query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                        queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
-                        cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                        cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
-                        cur.execute(queryToIncreaseInteraction, (className_b,))
-                        conn.commit()
-                        cur.close()
-        return Response(streamResponse(), mimetype='text/event-stream')
-        
-    except:
-        try:
-            context = query(className_b, inpt, 4)
-            print("Found context", context, "for", inpt)
-            #using context from database as input for images
-            ltm = query(className_b+"_ltm", inpt, 4)
-            print("Thinking with ltm", ltm)
+                        chatsToSend = [*memory]
+                    
+            print("Prompt", given_prompt)
+            generated_text = openai.ChatCompletion.create(                                 
+                model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
+                messages=[
+                    {"role": "system", "content": given_prompt},
+                    *chatsToSend,
+                    {"role": "user", "content": inpt},
+                ], 
+                temperature=0.7,
+                max_tokens=1024,
+                stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
+            )
             
-            given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
-
-            if subscription == 0 or subscription == None:
-                modified_ltm = parse_messages(ltm)
-                chatsToSend = [*modified_ltm, *memory]
-            else:
-                chatsToSend = [*memory]
-            # print("Modified", modified_ltm)
-
-            print("Chats going are: ", chatsToSend)
-
-            def streamResponse():
-                if count >= 100:
-                    print("Count", count)
-                    yield 'data: %s\n\n' % f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own."
-                    # adding the message to the database
+            response = ""
+            for i in generated_text:
+                # print("I", i)
+                if i["choices"][0]["delta"] != {}:
+                    # print("Sent", str(i))
+                    yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
+                    response += i["choices"][0]["delta"]["content"]
+                else:
+                    print("AllowIms?")
+                    print(allowImages)
+                    # messages sent in chunks, now sending the links
+                    if allowImages:
+                        links = query_image(className_b+"_images", inpt)
+                        print("Links", links)
+                    else:
+                        links = []
+                    if links != []:
+                        yield 'data: %s\n\n' % links
+                        response += str(links)
+                    # stream ended successfully, saving the chat to database
+                    print("Stream ended successfully")
+                    # saving the chat to database
+                    # def add_to_history():
+                    #     import_chat(className_b+"_ltm", inpt, response) 
+                    # t1 = threading.Thread(target=add_to_history)
+                    # t1.start()
                     conn = mysql.connect()
                     cur = conn.cursor()
                     query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
+                    queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
                     cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                    cur.execute(query, (classname, className_b, "assistant", f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
+                    cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
+                    cur.execute(queryToIncreaseInteraction, (className_b,))
                     conn.commit()
                     cur.close()
-                else:
-                    print("Prompt", given_prompt)
-                    generated_text = openai.ChatCompletion.create(                                 
-                        model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
-                        messages=[
-                            {"role": "system", "content": given_prompt},
-                            *chatsToSend,
-                            {"role": "user", "content": inpt},
-                        ], 
-                        temperature=0.7,
-                        max_tokens=1024,
-                        stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
-                    )
-                    
-                    response = ""
-                    for i in generated_text:
-                        # print("I", i)
-                        if i["choices"][0]["delta"] != {}:
-                            # print("Sent", str(i))
-                            yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
-                            response += i["choices"][0]["delta"]["content"]
-                        else:
-                            print("AllowIms?")
-                            print(allowImages)
-                            # messages sent in chunks, now sending the links
-                            if allowImages:
-                                links = query_image(className_b+"_images", inpt)
-                                print("Links", links)
-                            else:
-                                links = []
-                            if links != []:
-                                yield 'data: %s\n\n' % links
-                                response += str(links)
-                            # stream ended successfully, saving the chat to database
-                            print("Stream ended successfully")
-                            # saving the chat to database
-                            # def add_to_history():
-                            #     import_chat(className_b+"_ltm", inpt, response) 
-                            # t1 = threading.Thread(target=add_to_history)
-                            # t1.start()
-                            conn = mysql.connect()
-                            cur = conn.cursor()
-                            query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                            queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
-                            cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                            cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
-                            cur.execute(queryToIncreaseInteraction, (className_b,))
-                            conn.commit()
-                            cur.close()
-            
-            return Response(streamResponse(), mimetype='text/event-stream')
-        except:
-            context = query(className_b, inpt, 3)
-            print("Found context", context, "for", inpt)
-            #using context from database as input for images
-            ltm = query(className_b+"_ltm", inpt, 3)
-            print("Thinking with ltm", ltm)
-            
-            given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
-
-            if subscription == 0 or subscription == None:
-                modified_ltm = parse_messages(ltm)
-                chatsToSend = [*modified_ltm, *memory]
-            else:
-                chatsToSend = [*memory]
-            # print("Modified", modified_ltm)
-
-            print("Chats going are: ", chatsToSend)
-
-            def streamResponse():
-                if count >= 100:
-                    print("Count", count)
-                    yield 'data: %s\n\n' % f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own."
-                    # adding the message to the database
-                    conn = mysql.connect()
-                    cur = conn.cursor()
-                    query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                    cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                    cur.execute(query, (classname, className_b, "assistant", f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
-                    conn.commit()
-                    cur.close()
-                else:
-                    print("Prompt", given_prompt)
-                    generated_text = openai.ChatCompletion.create(                                 
-                        model="gpt-3.5-turbo" if subscription == 0 else "gpt-4",
-                        messages=[
-                            {"role": "system", "content": given_prompt},
-                            *chatsToSend,
-                            {"role": "user", "content": inpt},
-                        ], 
-                        temperature=0.7,
-                        max_tokens=1024,
-                        stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
-                    )
-                    
-                    response = ""
-                    for i in generated_text:
-                        # print("I", i)
-                        if i["choices"][0]["delta"] != {}:
-                            # print("Sent", str(i))
-                            yield 'data: %s\n\n' % i["choices"][0]["delta"]["content"]
-                            response += i["choices"][0]["delta"]["content"]
-                        else:
-                            print("AllowIms?")
-                            print(allowImages)
-                            # messages sent in chunks, now sending the links
-                            if allowImages:
-                                links = query_image(className_b+"_images", inpt)
-                                print("Links", links)
-                            else:
-                                links = []
-                            if links != []:
-                                yield 'data: %s\n\n' % links
-                                response += str(links)
-                            # stream ended successfully, saving the chat to database
-                            print("Stream ended successfully")
-                            # saving the chat to database
-                            # def add_to_history():
-                            #     import_chat(className_b+"_ltm", inpt, response) 
-                            # t1 = threading.Thread(target=add_to_history)
-                            # t1.start()
-                            conn = mysql.connect()
-                            cur = conn.cursor()
-                            query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
-                            queryToIncreaseInteraction = "UPDATE bots SET interactions = interactions + 1 WHERE botid=%s"
-                            cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-                            cur.execute(query, (classname, className_b, "assistant", response, datetime.datetime.now()))
-                            cur.execute(queryToIncreaseInteraction, (className_b,))
-                            conn.commit()
-                            cur.close()
-            
-            return Response(streamResponse(), mimetype='text/event-stream')
                 
+    return Response(streamResponse(), mimetype='text/event-stream')
+
 def connect_api(classname, className_b, subscription, inpt, allowImages, b_botrole, b_steps, comp_info=""):
 
     if subscription == None:
