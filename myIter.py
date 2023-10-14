@@ -1037,7 +1037,7 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
 
     #making a prompt with bot role, user input and long term memory
     # given_prompt = training_prompt(str(botrole), str(context), str(steps), str(comp_info), str(ltm))
-    given_prompt = """You're a great learner about the user. If user tells you some information say that okay, you'll remember the given information. You have to replicate the following role: """ + str(botrole)+ """And Following is the information about the user's company."""+str(comp_info)+"\n\nYou have memory and you remember all the conversation between you and the user. Always ask follow up questions and try to know more about the user. Remember whatever user says you."""
+    given_prompt = "You're a great learner about the user who asks more questions about the user or the role you are given below to learn as much as as possible and store in the memory. If user tells you some information say that okay, you'll remember the given information. And tell user to try to be specific in each message so storing and retrieving from memory would be easier and accurate. And if the user wants to test how you will be answering other users from trained or stored memory, the user can turn off training mode from toggle given above in top bar.\n\nIf user asks to summarize all the learnings or asks something overall from whatever he has taught, tell him that you have all the information stored in memory and can answer questions specifically if the user asks you, but can't get all the learnings or its summary all at once. You have to replicate the following role: " + str(botrole)+"\n\nYou have memory and you remember all the conversation between you and the user. Always ask follow up questions and try to know more about the user. Remember whatever user says you."
     # given_prompt = training_prompt(str(botrole), context, steps)
 
     # llm_chain = LLMChain(
@@ -1057,10 +1057,10 @@ def train(className_b, inpt, botrole, steps, comp_info, memory, botid):  #does n
                 {"role": "system", "content": given_prompt},
                 # *modified_ltm,
                 *memory,
-                {"role": "user", "content": inpt},
+                {"role": "user", "content": " ".join(inpt.split(" ")[:100])+"..."},
             ], 
             temperature=0.7,
-            max_tokens=1024,
+            max_tokens=256,
             stream=True #chal rhe hai? YE WALA BLOCK TO CHALRA, NEEHE  PRINT KRNE MEIN DIKKT AARI KUCH KEY KI YA PTANI KRRA PRINT
         )
         
@@ -1151,13 +1151,13 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     def streamResponse():
         if count >= 100:
             print("Count", count)
-            yield 'data: %s\n\n' % "Today's limit here is exhausted, to continue chatting you can use the DTU Bot on https://humanizeai.in/DTUHELP or create your own."
+            yield 'data: %s\n\n' % f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own."
             # adding the message to the database
             conn = mysql.connect()
             cur = conn.cursor()
             query = "INSERT INTO messages (username, botid, sender, message, timestamp) VALUES (%s, %s, %s, %s, %s)"
             cur.execute(query, (classname, className_b, "user", inpt, datetime.datetime.now()))
-            cur.execute(query, (classname, className_b, "assistant", "Today's limit here is exhausted, to continue chatting you can use the DTU Bot on https://humanizeai.in/DTUHELP or create your own.", datetime.datetime.now()))
+            cur.execute(query, (classname, className_b, "assistant", f"Today's limit here is exhausted, to continue chatting you can use the {className_b} Bot on https://humanizeai.in/{className_b} or create your own.", datetime.datetime.now()))
             conn.commit()
             cur.close()
         else:
@@ -1488,12 +1488,12 @@ def register():
         cur = conn.cursor()
         empty_array_string = json.dumps([])
         # public, info, steps ye sab add krna in the end
-        query = "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), phone VARCHAR(255), email_id VARCHAR(255) UNIQUE, password VARCHAR(255), username VARCHAR(255) DEFAULT NULL, pic VARCHAR(255) DEFAULT NULL, purpose VARCHAR(255) DEFAULT NULL, plan INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, website VARCHAR(255) DEFAULT NULL, favBots VARCHAR(255) DEFAULT '" + empty_array_string + "', pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', bots VARCHAR(255) DEFAULT '" + empty_array_string + "', setup BOOLEAN DEFAULT 0)"
-        query2 = "CREATE TABLE IF NOT EXISTS bots (id INT AUTO_INCREMENT PRIMARY KEY, botid VARCHAR(255) UNIQUE NOT NULL, name VARCHAR(255) DEFAULT NULL, username VARCHAR(255) NOT NULL, description VARCHAR(255) DEFAULT NULL, pic VARCHAR(255) DEFAULT NULL, interactions INT(255) DEFAULT 0, likes INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', setup BOOLEAN DEFAULT 0)"
-        print("Acc creation query", query)
-        cur.execute(query)
+        # query = "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), phone VARCHAR(255), email_id VARCHAR(255) UNIQUE, password VARCHAR(255), username VARCHAR(255) DEFAULT NULL, pic VARCHAR(255) DEFAULT NULL, purpose VARCHAR(255) DEFAULT NULL, plan INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, website VARCHAR(255) DEFAULT NULL, favBots VARCHAR(255) DEFAULT '" + empty_array_string + "', pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', bots VARCHAR(255) DEFAULT '" + empty_array_string + "', setup BOOLEAN DEFAULT 0)"
+        # query2 = "CREATE TABLE IF NOT EXISTS bots (id INT AUTO_INCREMENT PRIMARY KEY, botid VARCHAR(255) UNIQUE NOT NULL, name VARCHAR(255) DEFAULT NULL, username VARCHAR(255) NOT NULL, description VARCHAR(255) DEFAULT NULL, pic VARCHAR(255) DEFAULT NULL, interactions INT(255) DEFAULT 0, likes INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', setup BOOLEAN DEFAULT 0)"
+        # print("Acc creation query", query)
+        # cur.execute(query)
         print("Step 1")
-        cur.execute(query2)
+        # cur.execute(query2)
         print("Step 2")
         cur.execute("INSERT INTO users (name, email_id, password) VALUES (%s, %s, %s)", (name, email_id, generate_password_hash(password)))
         conn.commit()
@@ -1629,6 +1629,7 @@ def storeBotData(username):
         botrole = request.form['botrole']
         steps = request.form['steps']
         purpose = request.form['purpose']
+        public = request.form['public']
         pic, company_info, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website = None, None, None, None, None, None, None, None, None, None
         if 'pic' in request.files:
             profileimg = request.files['pic']
@@ -1662,14 +1663,14 @@ def storeBotData(username):
         conn = mysql.connect()
         cur = conn.cursor()
         # bots (id INT AUTO_INCREMENT PRIMARY KEY, botid VARCHAR(255) UNIQUE NOT NULL, username VARCHAR(255) NOT NULL, description VARCHAR(255) DEFAULT NULL, interactions INT(255) DEFAULT 0, likes INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', botrole blob DEFAULT NULL, steps blob DEFAULT NULL, company_info blob DEFAULT NULL, public boolean DEFAULT TRUE)
-        query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
+        query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s, public=%s WHERE botid=%s"
         if username == botid:
             query2 = "UPDATE users SET setup=%s WHERE email_id=%s"
             cur.execute(query2, (1, username))
             # as this is primary bot, update data in users table
             queryUpdateUser = "UPDATE users SET purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s WHERE email_id=%s OR username=%s"
             cur.execute(queryUpdateUser, (purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, username))
-        cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
+        cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, public, botid))
         conn.commit()
         cur.close()
         return jsonify({"success": True, "message": "Bot data stored successfully."}), 200
@@ -1688,6 +1689,7 @@ def updateBotData(username):
         botrole = request.form['botrole']
         steps = request.form['steps']
         purpose = request.form['purpose']
+        public = request.form['public']
         pic, company_info, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website = None, None, None, None, None, None, None, None, None, None
         if 'pic' in request.files:
             profileimg = request.files['pic']
@@ -1722,11 +1724,11 @@ def updateBotData(username):
         cur = conn.cursor()
         # bots (id INT AUTO_INCREMENT PRIMARY KEY, botid VARCHAR(255) UNIQUE NOT NULL, username VARCHAR(255) NOT NULL, description VARCHAR(255) DEFAULT NULL, interactions INT(255) DEFAULT 0, likes INT(255) DEFAULT 0, whatsapp VARCHAR(255) DEFAULT NULL, youtube VARCHAR(255) DEFAULT NULL, instagram VARCHAR(255) DEFAULT NULL, discord VARCHAR(255) DEFAULT NULL, telegram VARCHAR(255) DEFAULT NULL, pdfs VARCHAR(255) DEFAULT '" + empty_array_string + "', botrole blob DEFAULT NULL, steps blob DEFAULT NULL, company_info blob DEFAULT NULL, public boolean DEFAULT TRUE)
         if pic:
-            query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
-            cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
+            query = "UPDATE bots SET name=%s, description=%s, pic=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s, public=%s WHERE botid=%s"
+            cur.execute(query, (name, description, pic, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, public, botid))
         else:
-            query = "UPDATE bots SET name=%s, description=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s WHERE botid=%s"
-            cur.execute(query, (name, description, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, botid))
+            query = "UPDATE bots SET name=%s, description=%s, botrole=%s, rules=%s, purpose=%s, whatsapp=%s, telegram=%s, discord=%s, youtube=%s, instagram=%s, twitter=%s, linkedin=%s, website=%s, company_info=%s, public=%s WHERE botid=%s"
+            cur.execute(query, (name, description, botrole, steps, purpose, whatsapp, telegram, discord, youtube, instagram, twitter, linkedin, website, company_info, public, botid))
         query2 = "SELECT personal, username FROM bots WHERE botid=%s"
         cur.execute(query2, (botid,))
         data = cur.fetchone()
@@ -1997,10 +1999,10 @@ def getBots(username):
         queryFavBots = "SELECT b.botid, b.username, b.description, b.interactions, b.likes, b.name, b.pic, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.botid IN %s;"
         # queryTopBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY interactions DESC LIMIT 9"
         # getting verifies status for these too
-        queryTopBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.interactions DESC LIMIT 9;"
+        queryTopBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL AND b.public = 1 ORDER BY b.interactions DESC LIMIT 9;"
         # queryLatestBots = "SELECT botid, name, pic, description, interactions, likes FROM bots WHERE name IS NOT NULL ORDER BY id DESC LIMIT 6"
         # getting verifies status for these too
-        queryLatestBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL ORDER BY b.id DESC LIMIT 6;"
+        queryLatestBots = "SELECT b.botid, b.name, b.pic, b.description, b.interactions, b.likes, u.verified FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.name IS NOT NULL AND b.public=1 ORDER BY b.id DESC LIMIT 6;"
         cur.execute(queryGetTalkedBots, (username,))
         talkedBots = cur.fetchall()
         print("Talked bots", talkedBots)
@@ -2178,6 +2180,106 @@ def getChats(username, botid):
         cur = conn.cursor()
         query = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 50"
         cur.execute(query, (username, botid))
+        chats = cur.fetchall()
+        # converting chats into a list of dictionaries, where each dict has sender & message
+        chatsnew = [{"sender": chat[3], "message": chat[4]} for chat in chats]
+        conn.commit()
+        cur.close()
+        return jsonify({"success": True, "message": "Chats fetched successfully.", "data": chatsnew}), 200
+    except Exception as e:
+        print("MYSQL ERR", e)
+        return jsonify({"success": False, "message": "Error in fetching chats data from Database"}), 500
+
+@app.route("/get-bot-chats/<botid>", methods=["GET"])
+@cross_origin()
+@token_required
+def getBotChats(username, botid):
+    # check if the username is the owner of the bot
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        # query = "SELECT username FROM bots WHERE botid=%s"
+        # check username from users table matches with the username in bots table
+        query = "SELECT u.email_id FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.botid=%s"
+        cur.execute(query, (botid,))
+        botowner = cur.fetchone()[0]
+        print("Bot owner", botowner)
+        if botowner!=username:
+            return jsonify({"success": False, "message": "You are not the owner of this bot."}), 401
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print("MYSQL ERR", e)
+        return jsonify({"success": False, "message": "Error in verfying you as bot's owner"}), 500
+    # gettings bots username has chatted with in past, getting 100 most chatted bots and 50 latest bots
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        # getting all chatted users for this bot, username, lastmessage, count of messages of that user, name & pic of the user from users table
+        query0 = "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"
+        # query = "SELECT m.username, m.message, COUNT(m.message), u.name, u.pic FROM messages AS m JOIN users AS u ON m.username = u.email_id WHERE m.botid=%s AND m.timestamp = ( SELECT MAX(timestamp) FROM messages WHERE username = m.username ) GROUP BY m.username LIMIT 100"
+        query= """
+SELECT
+    M2.username AS email_id,
+    U.name,
+    U.pic,
+    M1.message AS lastMessage,
+    M2.messageCount AS messageCount
+FROM
+    users AS U
+JOIN
+    messages AS M1 ON U.email_id = M1.username
+JOIN (
+    SELECT username, COUNT(*) AS messageCount
+    FROM messages
+    WHERE botid = %s
+    GROUP BY username
+) AS M2 ON M1.username = M2.username
+WHERE
+    M1.botid = %s
+GROUP BY M1.username
+LIMIT 100;
+"""
+        cur.execute(query0)
+        cur.execute(query, (botid, botid))
+        chats = cur.fetchall()
+        print("Chats", chats)
+        # converting chats into a list of dictionaries, where each dict has name, username, lastmessage, count, image
+        # chatsnew = [{"name": chat[3], "username": chat[0], "lastMessage": chat[1], "count": chat[2], "image": chat[4]} for chat in chats]
+        chatsnew = [{"name": chat[1], "username": chat[0], "lastMessage": chat[3], "count": chat[4], "image": chat[2]} for chat in chats]
+        conn.commit()
+        cur.close()
+        return jsonify({"success": True, "message": "Chats fetched successfully.", "data": chatsnew}), 200
+    except Exception as e:
+        print("MYSQL ERR", e)
+        return jsonify({"success": False, "message": "Error in fetching chats data from Database"}), 500
+
+@app.route("/get-bot-chats/<botid>/<user>", methods=["GET"])
+@cross_origin()
+@token_required
+def getBotChatsWithUser(username, botid, user):
+    # check if the username is the owner of the bot
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        query = "SELECT u.email_id FROM bots AS b JOIN users AS u ON b.username = u.username WHERE b.botid=%s"
+        cur.execute(query, (botid,))
+        botowner = cur.fetchone()[0]
+        if botowner!=username:
+            return jsonify({"success": False, "message": "You are not the owner of this bot."}), 401
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print("MYSQL ERR", e)
+        return jsonify({"success": False, "message": "Error in fetching chats data from Database"}), 500
+    # gettings bots username has chatted with in past, getting 100 most chatted bots and 50 latest bots
+    try:
+        conn = mysql.connect()
+        cur = conn.cursor()
+        # query = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 50"
+        query = "SELECT * FROM messages WHERE (username=%s AND botid=%s) ORDER BY timestamp DESC LIMIT 50"
+        print("Getting chats bw", user, botid)
+        cur.execute(query, (user, botid))
         chats = cur.fetchall()
         # converting chats into a list of dictionaries, where each dict has sender & message
         chatsnew = [{"sender": chat[3], "message": chat[4]} for chat in chats]
