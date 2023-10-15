@@ -1170,6 +1170,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
                     chatsToSend = [*modified_ltm, *memory]
                 else:
                     chatsToSend = [*memory]
+                global chatsToSend
                 new_count = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
                 if new_count > 3072:
                     # remove second memory msg
