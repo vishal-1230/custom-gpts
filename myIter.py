@@ -1138,7 +1138,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
     conn.close()
 
     given_prompt = training_prompt(b_botrole, context, b_steps, comp_info, subscription, ltm)
-
+    global chatsToSend
     if subscription == 0 or subscription == None:
         modified_ltm = parse_messages(ltm)
         chatsToSend = [*modified_ltm, *memory]
@@ -1161,6 +1161,7 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
             conn.commit()
             cur.close()
         else:
+            global chatsToSend
             input_tokens = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
             if input_tokens > 3072:
                 # remove first memory msg
@@ -1169,14 +1170,14 @@ def connect(classname, className_b, subscription, inpt, allowImages, b_botrole, 
                     chatsToSend = [*modified_ltm, *memory]
                 else:
                     chatsToSend = [*memory]
-                # new_count = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
-                # if new_count > 3072:
-                #     # remove second memory msg
-                #     memory.pop(0)
-                #     if subscription == 0 or subscription == None:
-                #         chatsToSend = [*modified_ltm, *memory]
-                #     else:
-                #         chatsToSend = [*memory]
+                new_count = gpt3_tokenizer.count_tokens(given_prompt + " " + str(chatsToSend) + inpt)
+                if new_count > 3072:
+                    # remove second memory msg
+                    memory.pop(0)
+                    if subscription == 0 or subscription == None:
+                        chatsToSend = [*modified_ltm, *memory]
+                    else:
+                        chatsToSend = [*memory]
                     
             print("Prompt", given_prompt)
             generated_text = openai.ChatCompletion.create(                                 
