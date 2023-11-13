@@ -670,10 +670,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "jfif", "gif"}
 
 mysql = MySQL()
-app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = '1234'
-app.config['MYSQL_DATABASE_DB'] = 'humanize'
-app.config['MYSQL_DATABASE_HOST'] = 'localhost'
+app.config['MYSQL_DATABASE_USER'] = 'root' #change this temp username to your mysql username
+app.config['MYSQL_DATABASE_PASSWORD'] = '1234' #change this temp password to your mysql password
+app.config['MYSQL_DATABASE_DB'] = 'humanize' #change this temp db name to your mysql db name
+app.config['MYSQL_DATABASE_HOST'] = 'localhost' #change this temp host to your mysql host
 mysql.init_app(app)
 
 # public assets folder
