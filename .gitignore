@@ -4,3 +4,5 @@ bin
 include
 lib
 lib64
+secrets.json
+assets/*
